@@ -36,7 +36,7 @@ class Hunk(object):
         starttgt (Optional[int]): Starting line number in target file (1-based).
         linestgt (Optional[int]): Number of lines in target file for this hunk.
         invalid (bool): True if hunk parsing failed or hunk is malformed.
-        desc (str): Description text following the @@ line (usually function name).
+        desc (bytes): Description text following the @@ line (usually function name).
         text (List[bytes]): Raw hunk content lines including +, -, and context lines.
 
     Example:
@@ -55,7 +55,7 @@ class Hunk(object):
         self.starttgt: Optional[int] = None
         self.linestgt: Optional[int] = None
         self.invalid: bool = False
-        self.desc: str = ""
+        self.desc: bytes = b""
         self.text: List[bytes] = []
 
 
@@ -530,9 +530,7 @@ class PatchSet(object):
                     if match.group(6):
                         hunk.linestgt = int(match.group(6))
                     hunk.invalid = False
-                    hunk.desc = (
-                        match.group(7)[1:].rstrip().decode("utf-8", errors="replace")
-                    )
+                    hunk.desc = match.group(7)[1:].rstrip()
                     hunk.text = []
 
                     hunkactual["linessrc"] = hunkactual["linestgt"] = 0

@@ -22,7 +22,7 @@ class TestHunk:
         assert hunk.starttgt is None
         assert hunk.linestgt is None
         assert hunk.invalid is False
-        assert hunk.desc == ""
+        assert hunk.desc == b""
         assert hunk.text == []
 
     def test_hunk_properties(self):
@@ -32,14 +32,14 @@ class TestHunk:
         hunk.linessrc = 5
         hunk.starttgt = 15
         hunk.linestgt = 7
-        hunk.desc = "test description"
+        hunk.desc = b"test description"
         hunk.text = [b"+ added line", b"- removed line"]
 
         assert hunk.startsrc == 10
         assert hunk.linessrc == 5
         assert hunk.starttgt == 15
         assert hunk.linestgt == 7
-        assert hunk.desc == "test description"
+        assert hunk.desc == b"test description"
         assert hunk.text == [b"+ added line", b"- removed line"]
 
     def test_hunk_invalid_flag(self):

@@ -171,7 +171,7 @@ class TestPatchFiles(unittest.TestCase):
             self._assert_dirs_equal(
                 join(basepath, "[result]"),
                 tmpdir,
-                ignore=["%s.patch" % testname, ".svn", "[result]"],
+                ignore=["%s.patch" % testname, ".svn", "[result]", "__pycache__"],
             )
 
         shutil.rmtree(tmpdir)
