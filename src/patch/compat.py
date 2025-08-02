@@ -4,6 +4,7 @@ Compatibility utilities for Python 2/3 support.
 Copyright (c) 2008-2016 anatoly techtonik
 Available under the terms of MIT license
 """
+
 from __future__ import print_function
 
 import sys
@@ -24,13 +25,18 @@ except ImportError:
 PY3K = sys.version_info >= (3, 0)
 
 # Type variable for generic iterator
-T = TypeVar('T')
+T = TypeVar("T")
 
 # PEP 3114
 if not PY3K:
-    def compat_next(gen: Iterator[T]) -> T: return gen.next()  # type: ignore[attr-defined,no-any-return]
+
+    def compat_next(gen: Iterator[T]) -> T:
+        return gen.next()  # type: ignore[attr-defined,no-any-return]
+
 else:
-    def compat_next(gen: Iterator[T]) -> T: return gen.__next__()
+
+    def compat_next(gen: Iterator[T]) -> T:
+        return gen.__next__()
 
 
 # Public API of this module

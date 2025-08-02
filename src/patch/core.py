@@ -4,24 +4,24 @@ Core classes for patch parsing and application.
 Copyright (c) 2008-2016 anatoly techtonik
 Available under the terms of MIT license
 """
+
 from __future__ import print_function
 
 import copy
 import os
 import re
 import shutil
-from os.path import exists, isfile, abspath
-from typing import List, Optional, Union, Iterator, Any, IO, Dict, TYPE_CHECKING
+from os.path import exists, isfile
+from typing import List, Optional, Union, Iterator, IO, Dict, TYPE_CHECKING
 
-from .compat import compat_next, tostr
-from .constants import DIFF, PLAIN, GIT, HG, MERCURIAL, SVN, SUBVERSION, MIXED
+from .compat import tostr
+from .constants import MIXED
 from .logging_utils import debug, info, warning, debugmode
-from .utils import xisabs, xnormpath, xstrip, pathstrip
+from .utils import pathstrip
 from .parser import wrapumerate, detect_type, normalize_filenames
 
 if TYPE_CHECKING:
-    from .application import (diffstat, findfile, can_patch, match_file_hunks,
-                             patch_stream, write_hunks, reverse_patchset, dump_patchset)
+    pass
 
 
 class Hunk(object):
@@ -33,8 +33,9 @@ class Hunk(object):
         self.starttgt: Optional[int] = None
         self.linestgt: Optional[int] = None
         self.invalid: bool = False
-        self.desc: str = ''
+        self.desc: str = ""
         self.text: List[bytes] = []
+
 
 #  def apply(self, estream):
 #    """ write hunk data into enumerable stream
@@ -51,6 +52,7 @@ class Patch(object):
     """Patch for a single file.
     If used as an iterable, returns hunks.
     """
+
     def __init__(self) -> None:
         self.source: Optional[bytes] = None
         self.target: Optional[bytes] = None
@@ -81,7 +83,7 @@ class PatchSet(object):
         # list of Patch objects
         self.items: List[Patch] = []
 
-        self.errors: int = 0    # fatal parsing errors
+        self.errors: int = 0  # fatal parsing errors
         self.warnings: int = 0  # non-critical warnings
         # --- /API ---
 
@@ -100,7 +102,7 @@ class PatchSet(object):
         return True on success
         """
         lineends = dict(lf=0, crlf=0, cr=0)
-        nexthunkno = 0    #: even if index starts with 0 user messages number hunks from 1
+        nexthunkno = 0  #: even if index starts with 0 user messages number hunks from 1
 
         p: Optional[Patch] = None
         hunk: Optional[Hunk] = None
@@ -118,7 +120,7 @@ class PatchSet(object):
         hunkparsed = False  # state after successfully parsed hunk
 
         # regexp to match start of hunk, used groups - 1,3,4,6
-        re_hunk_start = re.compile(br"^@@ -(\d+)(,(\d+))? \+(\d+)(,(\d+))? @@")
+        re_hunk_start = re.compile(rb"^@@ -(\d+)(,(\d+))? \+(\d+)(,(\d+))? @@")
 
         self.errors = 0
         # temp buffers for header and filenames info
@@ -145,16 +147,21 @@ class PatchSet(object):
 
             # read out header
             if headscan:
-                while not fe.is_empty and not (isinstance(fe.line, bytes) and fe.line.startswith(b"--- ")):
+                while not fe.is_empty and not (
+                    isinstance(fe.line, bytes) and fe.line.startswith(b"--- ")
+                ):
                     if isinstance(fe.line, bytes):
                         header.append(fe.line)
                     fe.next()
                 if fe.is_empty:
-                    if p == None:
+                    if p is None:
                         debug("no patch data found")  # error is shown later
                         self.errors += 1
                     else:
-                        info("%d unparsed bytes left at the end of stream" % len(b''.join(header)))
+                        info(
+                            "%d unparsed bytes left at the end of stream"
+                            % len(b"".join(header))
+                        )
                         self.warnings += 1
                         # TODO check for \No new line at the end..
                         # TODO test for unparsed bytes
@@ -181,7 +188,7 @@ class PatchSet(object):
                 if line.strip(b"\r\n") == b"":
                     debug("expanding empty line in a middle of hunk body")
                     self.warnings += 1
-                    line = b' ' + line
+                    line = b" " + line
 
                 # process line first
                 if re.match(b"^[- \\+\\\\]", line):
@@ -206,7 +213,10 @@ class PatchSet(object):
                     # todo: handle \ No newline cases
                 else:
                     if p is not None and p.target is not None:
-                        warning("invalid hunk no.%d at %d for target file %r" % (nexthunkno, lineno+1, p.target))
+                        warning(
+                            "invalid hunk no.%d at %d for target file %r"
+                            % (nexthunkno, lineno + 1, p.target)
+                        )
                     # add hunk status node
                     if hunk is not None:
                         hunk.invalid = True
@@ -218,10 +228,20 @@ class PatchSet(object):
                     hunkskip = True
 
                 # check exit conditions
-                if hunk is not None and hunk.linessrc is not None and hunk.linestgt is not None:
-                    if hunkactual["linessrc"] > hunk.linessrc or hunkactual["linestgt"] > hunk.linestgt:
+                if (
+                    hunk is not None
+                    and hunk.linessrc is not None
+                    and hunk.linestgt is not None
+                ):
+                    if (
+                        hunkactual["linessrc"] > hunk.linessrc
+                        or hunkactual["linestgt"] > hunk.linestgt
+                    ):
                         if p is not None and p.target is not None:
-                            warning("extra lines for hunk no.%d at %d for target %r" % (nexthunkno, lineno+1, p.target))
+                            warning(
+                                "extra lines for hunk no.%d at %d for target %r"
+                                % (nexthunkno, lineno + 1, p.target)
+                            )
                         # add hunk status node
                         hunk.invalid = True
                         if p is not None:
@@ -230,7 +250,10 @@ class PatchSet(object):
                         # switch to hunkskip state
                         hunkbody = False
                         hunkskip = True
-                    elif hunk.linessrc == hunkactual["linessrc"] and hunk.linestgt == hunkactual["linestgt"]:
+                    elif (
+                        hunk.linessrc == hunkactual["linessrc"]
+                        and hunk.linestgt == hunkactual["linestgt"]
+                    ):
                         # hunk parsed successfully
                         if p is not None:
                             p.hunks.append(hunk)
@@ -241,16 +264,30 @@ class PatchSet(object):
                         # detect mixed window/unix line ends
                         if p is not None:
                             ends = p.hunkends
-                            if ((ends["cr"]!=0) + (ends["crlf"]!=0) + (ends["lf"]!=0)) > 1:
+                            if (
+                                (ends["cr"] != 0)
+                                + (ends["crlf"] != 0)
+                                + (ends["lf"] != 0)
+                            ) > 1:
                                 if p.source is not None:
-                                    warning("inconsistent line ends in patch hunks for %r" % p.source)
+                                    warning(
+                                        "inconsistent line ends in patch hunks for %r"
+                                        % p.source
+                                    )
                                 self.warnings += 1
                             if debugmode:
                                 debuglines: Dict[str, Union[str, int]] = dict(ends)
-                                file_target = tostr(p.target) if p.target is not None else "Unknown"
+                                file_target = (
+                                    tostr(p.target)
+                                    if p.target is not None
+                                    else "Unknown"
+                                )
                                 debuglines["file"] = file_target
                                 debuglines["hunk"] = nexthunkno
-                                debug("crlf: %(crlf)d  lf: %(lf)d  cr: %(cr)d\t - file: %(file)s hunk: %(hunk)d" % debuglines)
+                                debug(
+                                    "crlf: %(crlf)d  lf: %(lf)d  cr: %(cr)d\t - file: %(file)s hunk: %(hunk)d"
+                                    % debuglines
+                                )
                         # fetch next line
                         continue
 
@@ -269,7 +306,7 @@ class PatchSet(object):
 
             if filenames:
                 if line.startswith(b"--- "):
-                    if srcname != None:
+                    if srcname is not None:
                         # XXX testcase
                         warning("skipping false patch for %r" % srcname)
                         srcname = None
@@ -282,15 +319,17 @@ class PatchSet(object):
                     if match:
                         srcname = match.group(1).strip()
                     else:
-                        warning("skipping invalid filename at line %d" % (lineno+1))
+                        warning("skipping invalid filename at line %d" % (lineno + 1))
                         self.errors += 1
                         # XXX p.header += line
                         # switch back to headscan state
                         filenames = False
                         headscan = True
                 elif not line.startswith(b"+++ "):
-                    if srcname != None:
-                        warning("skipping invalid patch with no target for %r" % srcname)
+                    if srcname is not None:
+                        warning(
+                            "skipping invalid patch with no target for %r" % srcname
+                        )
                         self.errors += 1
                         srcname = None
                         # XXX header += srcname
@@ -301,9 +340,12 @@ class PatchSet(object):
                     filenames = False
                     headscan = True
                 else:
-                    if tgtname != None:
+                    if tgtname is not None:
                         # XXX seems to be a dead branch
-                        warning("skipping invalid patch - double target at line %d" % (lineno+1))
+                        warning(
+                            "skipping invalid patch - double target at line %d"
+                            % (lineno + 1)
+                        )
                         self.errors += 1
                         srcname = None
                         tgtname = None
@@ -315,10 +357,13 @@ class PatchSet(object):
                         filenames = False
                         headscan = True
                     else:
-                        re_filename = br"^\+\+\+ ([^\t]+)"
+                        re_filename = rb"^\+\+\+ ([^\t]+)"
                         match = re.match(re_filename, line)
                         if not match:
-                            warning("skipping invalid patch - no target filename at line %d" % (lineno+1))
+                            warning(
+                                "skipping invalid patch - no target filename at line %d"
+                                % (lineno + 1)
+                            )
                             self.errors += 1
                             srcname = None
                             # switch back to headscan state
@@ -341,11 +386,14 @@ class PatchSet(object):
                             continue
 
             if hunkhead:
-                match = re.match(br"^@@ -(\d+)(,(\d+))? \+(\d+)(,(\d+))? @@(.*)", line)
+                match = re.match(rb"^@@ -(\d+)(,(\d+))? \+(\d+)(,(\d+))? @@(.*)", line)
                 if not match:
                     if p is not None and not p.hunks:
                         if p.source is not None:
-                            warning("skipping invalid patch with no hunks for file %r" % p.source)
+                            warning(
+                                "skipping invalid patch with no hunks for file %r"
+                                % p.source
+                            )
                         self.errors += 1
                         # XXX review switch
                         # switch to headscan state
@@ -361,12 +409,16 @@ class PatchSet(object):
                     hunk = Hunk()
                     hunk.startsrc = int(match.group(1))
                     hunk.linessrc = 1
-                    if match.group(3): hunk.linessrc = int(match.group(3))
+                    if match.group(3):
+                        hunk.linessrc = int(match.group(3))
                     hunk.starttgt = int(match.group(4))
                     hunk.linestgt = 1
-                    if match.group(6): hunk.linestgt = int(match.group(6))
+                    if match.group(6):
+                        hunk.linestgt = int(match.group(6))
                     hunk.invalid = False
-                    hunk.desc = match.group(7)[1:].rstrip().decode('utf-8', errors='replace')
+                    hunk.desc = (
+                        match.group(7)[1:].rstrip().decode("utf-8", errors="replace")
+                    )
                     hunk.text = []
 
                     hunkactual["linessrc"] = hunkactual["linestgt"] = 0
@@ -403,8 +455,10 @@ class PatchSet(object):
                 debug("- %2d hunks for %r" % (len(p.hunks), p.source))
 
         # XXX fix total hunks calculation
-        debug("total files: %d  total hunks: %d" % (len(self.items),
-            sum(len(p.hunks) for p in self.items)))
+        debug(
+            "total files: %d  total hunks: %d"
+            % (len(self.items), sum(len(p.hunks) for p in self.items))
+        )
 
         # ---- detect patch and patchset types ----
         for idx, p in enumerate(self.items):
@@ -419,16 +473,18 @@ class PatchSet(object):
 
         normalize_filenames(self)
 
-        return (self.errors == 0)
+        return self.errors == 0
 
     def diffstat(self) -> str:
         """calculate diffstat and return as a string"""
         from .application import diffstat
+
         return diffstat(self)
 
     def findfile(self, old: bytes, new: bytes) -> Optional[bytes]:
         """return name of file to be patched or None"""
         from .application import findfile
+
         return findfile(old, new)
 
     def can_patch(self, filename: bytes) -> Optional[bool]:
@@ -439,28 +495,34 @@ class PatchSet(object):
         :returns: True, False or None
         """
         from .application import can_patch
+
         return can_patch(self, filename)
 
     def _match_file_hunks(self, filepath: bytes, hunks: List[Hunk]) -> bool:
         from .application import match_file_hunks
+
         return match_file_hunks(filepath, hunks)
 
     def patch_stream(self, instream: IO[bytes], hunks: List[Hunk]) -> Iterator[bytes]:
         """Generator that yields stream patched with hunks iterable"""
         from .application import patch_stream
+
         return patch_stream(instream, hunks)
 
     def write_hunks(self, srcname: bytes, tgtname: bytes, hunks: List[Hunk]) -> bool:
         from .application import write_hunks
+
         return write_hunks(srcname, tgtname, hunks)
 
     def _reverse(self) -> None:
         """reverse patch direction (this doesn't touch filenames)"""
         from .application import reverse_patchset
+
         reverse_patchset(self)
 
     def dump(self) -> None:
         from .application import dump_patchset
+
         dump_patchset(self)
 
     def apply(self, strip: Union[int, str] = 0, root: Optional[str] = None) -> bool:
@@ -486,7 +548,7 @@ class PatchSet(object):
                 warning("error: strip parameter '%s' must be an integer" % strip)
                 strip = 0
 
-        #for fileno, filename in enumerate(self.source):
+        # for fileno, filename in enumerate(self.source):
         for i, p in enumerate(self.items):
             if strip:
                 debug("stripping %s leading component(s) from:" % strip)
@@ -507,44 +569,52 @@ class PatchSet(object):
             filename = self.findfile(old, new)
 
             if not filename:
-                warning("source/target file does not exist:\n  --- %r\n  +++ %r" % (old, new))
+                warning(
+                    "source/target file does not exist:\n  --- %r\n  +++ %r"
+                    % (old, new)
+                )
                 errors += 1
                 continue
-            if not isfile(filename.decode('utf-8', errors='replace')):
+            if not isfile(filename.decode("utf-8", errors="replace")):
                 warning("not a file - %r" % filename)
                 errors += 1
                 continue
 
             # [ ] check absolute paths security here
-            debug("processing %d/%d:\t %r" % (i+1, total, filename))
+            debug("processing %d/%d:\t %r" % (i + 1, total, filename))
 
             # validate before patching
-            f2fp = open(filename, 'rb')
+            f2fp = open(filename, "rb")
             hunkno = 0
             hunk = p.hunks[hunkno]
             hunkfind: List[bytes] = []
-            hunkreplace: List[bytes] = []
             validhunks = 0
             canpatch = False
             hunklineno = 0
             for lineno, line in enumerate(f2fp):
-                if hunk.startsrc is not None and lineno+1 < hunk.startsrc:
+                if hunk.startsrc is not None and lineno + 1 < hunk.startsrc:
                     continue
-                elif hunk.startsrc is not None and lineno+1 == hunk.startsrc:
-                    hunkfind = [x[1:].rstrip(b"\r\n") for x in hunk.text if x[0:1] in b" -"]
-                    hunkreplace = [x[1:].rstrip(b"\r\n") for x in hunk.text if x[0:1] in b" +"]
-                    #pprint(hunkreplace)
+                elif hunk.startsrc is not None and lineno + 1 == hunk.startsrc:
+                    hunkfind = [
+                        x[1:].rstrip(b"\r\n") for x in hunk.text if x[0:1] in b" -"
+                    ]
                     hunklineno = 0
 
                     # todo \ No newline at end of file
 
                 # check hunks in source file
-                if hunk.startsrc is not None and lineno+1 < hunk.startsrc+len(hunkfind)-1:
+                if (
+                    hunk.startsrc is not None
+                    and lineno + 1 < hunk.startsrc + len(hunkfind) - 1
+                ):
                     if line.rstrip(b"\r\n") == hunkfind[hunklineno]:
                         hunklineno += 1
                     else:
-                        info("file %d/%d:\t %r" % (i+1, total, filename))
-                        info(" hunk no.%d doesn't match source file at line %d" % (hunkno+1, lineno+1))
+                        info("file %d/%d:\t %r" % (i + 1, total, filename))
+                        info(
+                            " hunk no.%d doesn't match source file at line %d"
+                            % (hunkno + 1, lineno + 1)
+                        )
                         info("  expected: %r" % hunkfind[hunklineno])
                         info("  actual  : %r" % line.rstrip(b"\r\n"))
                         # not counting this as error, because file may already be patched.
@@ -563,8 +633,14 @@ class PatchSet(object):
                             break
 
                 # check if processed line is the last line
-                if hunk.startsrc is not None and lineno+1 == hunk.startsrc+len(hunkfind)-1:
-                    debug(" hunk no.%d for file %r  -- is ready to be patched" % (hunkno+1, filename))
+                if (
+                    hunk.startsrc is not None
+                    and lineno + 1 == hunk.startsrc + len(hunkfind) - 1
+                ):
+                    debug(
+                        " hunk no.%d for file %r  -- is ready to be patched"
+                        % (hunkno + 1, filename)
+                    )
                     hunkno += 1
                     validhunks += 1
                     if hunkno < len(p.hunks):
@@ -576,7 +652,10 @@ class PatchSet(object):
                             break
             else:
                 if hunkno < len(p.hunks):
-                    warning("premature end of source file %r at hunk %d" % (filename, hunkno+1))
+                    warning(
+                        "premature end of source file %r at hunk %d"
+                        % (filename, hunkno + 1)
+                    )
                     errors += 1
 
             f2fp.close()
@@ -589,26 +668,40 @@ class PatchSet(object):
                     errors += 1
             if canpatch:
                 backupname = filename + b".orig"
-                if exists(backupname.decode('utf-8', errors='replace')):
+                if exists(backupname.decode("utf-8", errors="replace")):
                     warning("can't backup original file to %r - aborting" % backupname)
                 else:
-                    shutil.move(filename.decode('utf-8', errors='replace'), backupname.decode('utf-8', errors='replace'))
+                    shutil.move(
+                        filename.decode("utf-8", errors="replace"),
+                        backupname.decode("utf-8", errors="replace"),
+                    )
                     if self.write_hunks(backupname, filename, p.hunks):
-                        info("successfully patched %d/%d:\t %r" % (i+1, total, filename))
-                        os.unlink(backupname.decode('utf-8', errors='replace'))
+                        info(
+                            "successfully patched %d/%d:\t %r"
+                            % (i + 1, total, filename)
+                        )
+                        os.unlink(backupname.decode("utf-8", errors="replace"))
                     else:
                         errors += 1
                         warning("error patching file %r" % filename)
-                        shutil.copy(filename.decode('utf-8', errors='replace'), filename.decode('utf-8', errors='replace') + ".invalid")
-                        warning("invalid version is saved to %r" % (filename + b".invalid"))
+                        shutil.copy(
+                            filename.decode("utf-8", errors="replace"),
+                            filename.decode("utf-8", errors="replace") + ".invalid",
+                        )
+                        warning(
+                            "invalid version is saved to %r" % (filename + b".invalid")
+                        )
                         # todo: proper rejects
-                        shutil.move(backupname.decode('utf-8', errors='replace'), filename.decode('utf-8', errors='replace'))
+                        shutil.move(
+                            backupname.decode("utf-8", errors="replace"),
+                            filename.decode("utf-8", errors="replace"),
+                        )
 
         if prevdir is not None:
             os.chdir(prevdir)
 
         # todo: check for premature eof
-        return (errors == 0)
+        return errors == 0
 
     def revert(self, strip: Union[int, str] = 0, root: Optional[str] = None) -> bool:
         """apply patch in reverse order"""

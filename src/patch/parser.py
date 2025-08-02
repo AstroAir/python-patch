@@ -4,8 +4,9 @@ Patch parsing functionality.
 Copyright (c) 2008-2016 anatoly techtonik
 Available under the terms of MIT license
 """
+
 import re
-from typing import Any, Union, TYPE_CHECKING, Iterator, Tuple
+from typing import Union, TYPE_CHECKING, Iterator
 
 from .compat import compat_next
 from .constants import PLAIN, GIT, HG, SVN
@@ -31,7 +32,7 @@ class wrapumerate(object):
 
     def next(self) -> bool:
         """Try to read the next line and return True if it is available,
-           False if end of stream is reached."""
+        False if end of stream is reached."""
         if self._exhausted:
             return False
 
@@ -68,15 +69,19 @@ def detect_type(p: "Patch") -> str:
     #  - next line is ===... delimiter
     #  - filename is followed by revision number
     # TODO add SVN revision
-    if (len(p.header) > 1 and p.header[-2].startswith(b"Index: ")
-            and p.header[-1].startswith(b"="*67)):
+    if (
+        len(p.header) > 1
+        and p.header[-2].startswith(b"Index: ")
+        and p.header[-1].startswith(b"=" * 67)
+    ):
         return SVN
 
     # common checks for both HG and GIT - need to check for None first
     DVCS = False
     if p.source is not None and p.target is not None:
-        DVCS = ((p.source.startswith(b'a/') or p.source == b'/dev/null')
-                and (p.target.startswith(b'b/') or p.target == b'/dev/null'))
+        DVCS = (p.source.startswith(b"a/") or p.source == b"/dev/null") and (
+            p.target.startswith(b"b/") or p.target == b"/dev/null"
+        )
 
     # GIT type check
     #  - header[-2] is like "diff --git a/oldname b/newname"
@@ -92,10 +97,11 @@ def detect_type(p: "Patch") -> str:
         for idx in reversed(range(len(p.header))):
             if p.header[idx].startswith(b"diff --git"):
                 break
-        if idx >= 0 and p.header[idx].startswith(b'diff --git a/'):
+        if idx >= 0 and p.header[idx].startswith(b"diff --git a/"):
             # Check if there's an index line (typical for Git)
-            if (idx+1 < len(p.header)
-                    and re.match(b'index \\w+\\.\\.\\w+ \\d+', p.header[idx+1])):
+            if idx + 1 < len(p.header) and re.match(
+                b"index \\w+\\.\\.\\w+ \\d+", p.header[idx + 1]
+            ):
                 if DVCS:
                     return GIT
 
@@ -111,13 +117,13 @@ def detect_type(p: "Patch") -> str:
     # TODO add MQ
     # TODO add revision info
     if len(p.header) > 0:
-        if DVCS and re.match(b'diff -r \\w+ .*', p.header[-1]):
+        if DVCS and re.match(b"diff -r \\w+ .*", p.header[-1]):
             return HG
         # Check for HG changeset patch marker or Git-style HG patches
-        if DVCS and p.header[-1].startswith(b'diff --git a/'):
+        if DVCS and p.header[-1].startswith(b"diff --git a/"):
             if len(p.header) == 1:  # Git-style HG patch has only one header line
                 return HG
-            elif p.header[0].startswith(b'# HG changeset patch'):
+            elif p.header[0].startswith(b"# HG changeset patch"):
                 return HG
 
     return PLAIN
@@ -144,13 +150,13 @@ def normalize_filenames(patchset: "PatchSet") -> None:
         if p.type in (HG, GIT):
             # TODO: figure out how to deal with /dev/null entries
             debug("stripping a/ and b/ prefixes")
-            if p.source != b'/dev/null' and p.source is not None:
+            if p.source != b"/dev/null" and p.source is not None:
                 if not p.source.startswith(b"a/"):
                     warning("invalid source filename")
                     patchset.warnings += 1
                 else:
                     p.source = p.source[2:]
-            if p.target != b'/dev/null' and p.target is not None:
+            if p.target != b"/dev/null" and p.target is not None:
                 if not p.target.startswith(b"b/"):
                     warning("invalid target filename")
                     patchset.warnings += 1
@@ -163,37 +169,39 @@ def normalize_filenames(patchset: "PatchSet") -> None:
         if p.target is not None:
             p.target = xnormpath(p.target)
 
-        sep = b'/'  # sep value can be hardcoded, but it looks nice this way
+        sep = b"/"  # sep value can be hardcoded, but it looks nice this way
 
         # references to parent are not allowed
         if p.source is not None and p.source.startswith(b".." + sep):
             warning(
-                "error: stripping parent path for source file patch no.%d" % (i+1))
+                "error: stripping parent path for source file patch no.%d" % (i + 1)
+            )
             patchset.warnings += 1
             while p.source.startswith(b".." + sep):
                 p.source = p.source.partition(sep)[2]
         if p.target is not None and p.target.startswith(b".." + sep):
             warning(
-                "error: stripping parent path for target file patch no.%d" % (i+1))
+                "error: stripping parent path for target file patch no.%d" % (i + 1)
+            )
             patchset.warnings += 1
             while p.target.startswith(b".." + sep):
                 p.target = p.target.partition(sep)[2]
         # absolute paths are not allowed (except /dev/null)
-        source_is_abs = p.source is not None and xisabs(
-            p.source) and p.source != b'/dev/null'
-        target_is_abs = p.target is not None and xisabs(
-            p.target) and p.target != b'/dev/null'
+        source_is_abs = (
+            p.source is not None and xisabs(p.source) and p.source != b"/dev/null"
+        )
+        target_is_abs = (
+            p.target is not None and xisabs(p.target) and p.target != b"/dev/null"
+        )
 
         if source_is_abs or target_is_abs:
-            warning("error: absolute paths are not allowed - file no.%d" % (i+1))
+            warning("error: absolute paths are not allowed - file no.%d" % (i + 1))
             patchset.warnings += 1
             if source_is_abs and p.source is not None:
-                warning("stripping absolute path from source name %r" %
-                        p.source)
+                warning("stripping absolute path from source name %r" % p.source)
                 p.source = xstrip(p.source)
             if target_is_abs and p.target is not None:
-                warning("stripping absolute path from target name %r" %
-                        p.target)
+                warning("stripping absolute path from target name %r" % p.target)
                 p.target = xstrip(p.target)
 
         patchset.items[i].source = p.source

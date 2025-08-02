@@ -4,6 +4,7 @@ Main API functions for patch parsing.
 Copyright (c) 2008-2016 anatoly techtonik
 Available under the terms of MIT license
 """
+
 from typing import Union
 
 from .compat import StringIO, urllib_request
@@ -20,7 +21,7 @@ def fromfile(filename: str) -> Union[PatchSet, bool]:
     fp = open(filename, "rb")
     res = patchset.parse(fp)
     fp.close()
-    if res == True:
+    if res:
         return patchset
     return False
 
@@ -31,7 +32,7 @@ def fromstring(s: Union[str, bytes]) -> Union[PatchSet, bool]:
     """
     # Handle both string and bytes input
     if isinstance(s, str):
-        s = s.encode('utf-8')
+        s = s.encode("utf-8")
 
     ps = PatchSet(StringIO(s))
     if ps.errors == 0:

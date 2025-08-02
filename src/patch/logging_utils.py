@@ -4,8 +4,8 @@ Logging utilities for the patch module.
 Copyright (c) 2008-2016 anatoly techtonik
 Available under the terms of MIT license
 """
+
 import logging
-from typing import Optional
 
 
 class NullHandler(logging.Handler):
@@ -13,6 +13,7 @@ class NullHandler(logging.Handler):
     `No handlers could be found for logger "patch"`
     http://bugs.python.org/issue16539
     """
+
     def handle(self, record: logging.LogRecord) -> bool:
         return True
 
@@ -25,7 +26,9 @@ class NullHandler(logging.Handler):
 
 # Logging is controlled by logger named after the
 # module name (e.g. 'patch' for patch.py module)
-logger = logging.getLogger(__name__.split('.')[0])  # Get 'patch' from 'patch.logging_utils'
+logger = logging.getLogger(
+    __name__.split(".")[0]
+)  # Get 'patch' from 'patch.logging_utils'
 
 debug = logger.debug
 info = logger.info
