@@ -11,6 +11,7 @@ import logging
 import sys
 from optparse import OptionParser
 from os.path import exists, isfile
+from typing import Union
 
 from .api import fromfile, fromstring, fromurl
 from .constants import __version__
@@ -83,6 +84,7 @@ def main() -> None:
     if options.debugmode:
         setdebug()  # this sets global debugmode variable
 
+    patch: Union[PatchSet, bool]
     if readstdin:
         # Use binary stdin if available, otherwise convert text to bytes
         if hasattr(sys.stdin, "buffer"):
@@ -108,15 +110,20 @@ def main() -> None:
     if not patch:
         sys.exit("patch parsing failed")
 
+    # At this point, patch is guaranteed to be a PatchSet
+    assert isinstance(patch, PatchSet)
+
     if options.diffstat:
         print(patch.diffstat())
         sys.exit(0)
 
     # pprint(patch)
     if options.revert:
-        patch.revert(options.strip, root=options.directory) or sys.exit(-1)
+        if not patch.revert(options.strip, root=options.directory):
+            sys.exit(-1)
     else:
-        patch.apply(options.strip, root=options.directory) or sys.exit(-1)
+        if not patch.apply(options.strip, root=options.directory):
+            sys.exit(-1)
 
     # todo: document and test line ends handling logic - patch.py detects proper line-endings
     #       for inserted hunks and issues a warning if patched file has incosistent line ends
