@@ -17,7 +17,7 @@ from .core import PatchSet
 from .logging_utils import logger, streamhandler, setdebug
 
 
-def main():
+def main() -> None:
     opt = OptionParser(usage="1. %prog [options] unified.diff\n"
                       "       2. %prog [options] http://host/patch\n"
                       "       3. %prog [options] -- < unified.diff",

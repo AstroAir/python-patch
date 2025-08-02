@@ -4,13 +4,14 @@ Main API functions for patch parsing.
 Copyright (c) 2008-2016 anatoly techtonik
 Available under the terms of MIT license
 """
+from typing import Union
 
 from .compat import StringIO, urllib_request
 from .core import PatchSet
 from .logging_utils import debug
 
 
-def fromfile(filename):
+def fromfile(filename: str) -> Union[PatchSet, bool]:
     """Parse patch file. If successful, returns
     PatchSet() object. Otherwise returns False.
     """
@@ -24,7 +25,7 @@ def fromfile(filename):
     return False
 
 
-def fromstring(s):
+def fromstring(s: Union[str, bytes]) -> Union[PatchSet, bool]:
     """Parse text string and return PatchSet()
     object (or False if parsing fails)
     """
@@ -38,7 +39,7 @@ def fromstring(s):
     return False
 
 
-def fromurl(url):
+def fromurl(url: str) -> Union[PatchSet, bool]:
     """Parse patch from an URL, return False
     if an error occured. Note that this also
     can throw urlopen() exceptions.

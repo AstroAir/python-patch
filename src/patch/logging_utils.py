@@ -5,6 +5,7 @@ Copyright (c) 2008-2016 anatoly techtonik
 Available under the terms of MIT license
 """
 import logging
+from typing import Optional
 
 
 class NullHandler(logging.Handler):
@@ -12,13 +13,13 @@ class NullHandler(logging.Handler):
     `No handlers could be found for logger "patch"`
     http://bugs.python.org/issue16539
     """
-    def handle(self, record):
+    def handle(self, record: logging.LogRecord) -> bool:
+        return True
+
+    def emit(self, record: logging.LogRecord) -> None:
         pass
 
-    def emit(self, record):
-        pass
-
-    def createLock(self):
+    def createLock(self) -> None:
         self.lock = None
 
 
@@ -38,7 +39,7 @@ logger.addHandler(NullHandler())
 debugmode = False
 
 
-def setdebug():
+def setdebug() -> None:
     global debugmode, streamhandler
 
     debugmode = True

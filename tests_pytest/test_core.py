@@ -31,14 +31,14 @@ class TestHunk:
         hunk.linessrc = 5
         hunk.starttgt = 15
         hunk.linestgt = 7
-        hunk.desc = b'test description'
+        hunk.desc = 'test description'
         hunk.text = [b'+ added line', b'- removed line']
         
         assert hunk.startsrc == 10
         assert hunk.linessrc == 5
         assert hunk.starttgt == 15
         assert hunk.linestgt == 7
-        assert hunk.desc == b'test description'
+        assert hunk.desc == 'test description'
         assert hunk.text == [b'+ added line', b'- removed line']
     
     def test_hunk_invalid_flag(self):
@@ -59,7 +59,7 @@ class TestPatch:
         assert patch_obj.source is None
         assert patch_obj.target is None
         assert patch_obj.hunks == []
-        assert patch_obj.hunkends == []
+        assert patch_obj.hunkends == {}
         assert patch_obj.header == []
         assert patch_obj.type is None
     

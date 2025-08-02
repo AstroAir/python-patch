@@ -7,13 +7,14 @@ Available under the terms of MIT license
 import os
 import posixpath
 import re
+from typing import Union
 
 
 # x...() function are used to work with paths in
 # cross-platform manner - all paths use forward
 # slashes even on Windows.
 
-def xisabs(filename):
+def xisabs(filename: bytes) -> bool:
     """Cross-platform version of `os.path.isabs()`
     Returns True if `filename` is absolute on
     Linux, OS X or Windows.
@@ -27,7 +28,7 @@ def xisabs(filename):
     return False
 
 
-def xnormpath(path):
+def xnormpath(path: bytes) -> bytes:
     """Cross-platform version of os.path.normpath"""
     # replace escapes and Windows slashes
     normalized = posixpath.normpath(path).replace(b'\\', b'/')
@@ -35,7 +36,7 @@ def xnormpath(path):
     return posixpath.normpath(normalized)
 
 
-def xstrip(filename):
+def xstrip(filename: bytes) -> bytes:
     """Make relative path out of absolute by stripping
     prefixes used on Linux, OS X and Windows.
 
@@ -51,7 +52,7 @@ def xstrip(filename):
     return filename
 
 
-def pathstrip(path, n):
+def pathstrip(path: bytes, n: int) -> bytes:
     """Strip n leading components from the given path"""
     pathlist = [path]
     while os.path.dirname(pathlist[0]) != b'':
