@@ -2,14 +2,14 @@
 # pyglet
 # Copyright (c) 2006-2008 Alex Holkner
 # All rights reserved.
-#
+# 
 # Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
+# modification, are permitted provided that the following conditions 
 # are met:
 #
 #  * Redistributions of source code must retain the above copyright
 #    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
+#  * Redistributions in binary form must reproduce the above copyright 
 #    notice, this list of conditions and the following disclaimer in
 #    the documentation and/or other materials provided with the
 #    distribution.
@@ -32,12 +32,15 @@
 # POSSIBILITY OF SUCH DAMAGE.
 # ----------------------------------------------------------------------------
 
-""" """
+'''
+'''
 
 # TODO Windows Vista: need to call SetProcessDPIAware?  May affect GDI+ calls
 # as well as font.
 
 from ctypes import *
+import ctypes
+import math
 
 from sys import byteorder
 import pyglet
@@ -49,47 +52,38 @@ from pyglet.libs.win32 import _gdi32 as gdi32, _user32 as user32
 from pyglet.libs.win32 import _kernel32 as kernel32
 from pyglet.compat import asbytes
 
-_debug_font = pyglet.options["debug_font"]
+_debug_font = pyglet.options['debug_font']
 
 
 def str_ucs2(text):
-    if byteorder == "big":
-        text = text.encode("utf_16_be")
+    if byteorder == 'big':
+        text = text.encode('utf_16_be')
     else:
-        text = text.encode("utf_16_le")  # explicit endian avoids BOM
-    return create_string_buffer(text + "\0")
+        text = text.encode('utf_16_le')   # explicit endian avoids BOM
+    return create_string_buffer(text + '\0')
 
-
-_debug_dir = "debug_font"
-
-
+_debug_dir = 'debug_font'
 def _debug_filename(base, extension):
     import os
-
     if not os.path.exists(_debug_dir):
         os.makedirs(_debug_dir)
-    name = "%s-%%d.%%s" % os.path.join(_debug_dir, base)
+    name = '%s-%%d.%%s' % os.path.join(_debug_dir, base)
     num = 1
     while os.path.exists(name % (num, extension)):
         num += 1
     return name % (num, extension)
 
-
 def _debug_image(image, name):
-    filename = _debug_filename(name, "png")
+    filename = _debug_filename(name, 'png')
     image.save(filename)
-    _debug("Saved image %r to %s" % (image, filename))
-
+    _debug('Saved image %r to %s' % (image, filename))
 
 _debug_logfile = None
-
-
 def _debug(msg):
     global _debug_logfile
     if not _debug_logfile:
-        _debug_logfile = open(_debug_filename("log", "txt"), "wt")
-    _debug_logfile.write(msg + "\n")
-
+        _debug_logfile = open(_debug_filename('log', 'txt'), 'wt')
+    _debug_logfile.write(msg + '\n')
 
 class Win32GlyphRenderer(base.GlyphRenderer):
     _bitmap = None
@@ -113,8 +107,7 @@ class Win32GlyphRenderer(base.GlyphRenderer):
         pass
 
     def render(self, text):
-        raise NotImplementedError("abstract")
-
+        raise NotImplementedError('abstract')
 
 class GDIGlyphRenderer(Win32GlyphRenderer):
     def __del__(self):
@@ -129,13 +122,15 @@ class GDIGlyphRenderer(Win32GlyphRenderer):
     def render(self, text):
         # Attempt to get ABC widths (only for TrueType)
         abc = ABC()
-        if gdi32.GetCharABCWidthsW(self._dc, ord(text), ord(text), byref(abc)):
-            width = abc.abcB
+        if gdi32.GetCharABCWidthsW(self._dc, 
+            ord(text), ord(text), byref(abc)):
+            width = abc.abcB 
             lsb = abc.abcA
             advance = abc.abcA + abc.abcB + abc.abcC
         else:
             width_buf = c_int()
-            gdi32.GetCharWidth32W(self._dc, ord(text), ord(text), byref(width_buf))
+            gdi32.GetCharWidth32W(self._dc, 
+                ord(text), ord(text), byref(width_buf))
             width = width_buf.value
             lsb = 0
             advance = width
@@ -143,21 +138,21 @@ class GDIGlyphRenderer(Win32GlyphRenderer):
         # Can't get glyph-specific dimensions, use whole line-height.
         height = self._bitmap_height
         image = self._get_image(text, width, height, lsb)
-
+        
         glyph = self.font.create_glyph(image)
         glyph.set_bearings(-self.font.descent, lsb, advance)
 
         if _debug_font:
-            _debug("%r.render(%s)" % (self, text))
-            _debug("abc.abcA = %r" % abc.abcA)
-            _debug("abc.abcB = %r" % abc.abcB)
-            _debug("abc.abcC = %r" % abc.abcC)
-            _debug("width = %r" % width)
-            _debug("height = %r" % height)
-            _debug("lsb = %r" % lsb)
-            _debug("advance = %r" % advance)
-            _debug_image(image, "glyph_%s" % text)
-            _debug_image(self.font.textures[0], "tex_%s" % text)
+            _debug('%r.render(%s)' % (self, text))
+            _debug('abc.abcA = %r' % abc.abcA)
+            _debug('abc.abcB = %r' % abc.abcB)
+            _debug('abc.abcC = %r' % abc.abcC)
+            _debug('width = %r' % width)
+            _debug('height = %r' % height)
+            _debug('lsb = %r' % lsb)
+            _debug('advance = %r' % advance)
+            _debug_image(image, 'glyph_%s' % text)
+            _debug_image(self.font.textures[0], 'tex_%s' % text)
 
         return glyph
 
@@ -166,24 +161,24 @@ class GDIGlyphRenderer(Win32GlyphRenderer):
         # create an 8-bit palette bitmap with 256 shades of grey, but
         # unfortunately antialiasing will not work on such a bitmap.  So, we
         # use a 32-bit bitmap and use the red channel as OpenGL's alpha.
-
+    
         gdi32.SelectObject(self._dc, self._bitmap)
         gdi32.SelectObject(self._dc, self.font.hfont)
         gdi32.SetBkColor(self._dc, 0x0)
-        gdi32.SetTextColor(self._dc, 0x00FFFFFF)
+        gdi32.SetTextColor(self._dc, 0x00ffffff)
         gdi32.SetBkMode(self._dc, OPAQUE)
 
         # Draw to DC
         user32.FillRect(self._dc, byref(self._bitmap_rect), self._black)
-        gdi32.ExtTextOutA(self._dc, -lsb, 0, 0, None, text, len(text), None)
+        gdi32.ExtTextOutA(self._dc, -lsb, 0, 0, None, text,
+            len(text), None)
         gdi32.GdiFlush()
 
         # Create glyph object and copy bitmap data to texture
-        image = pyglet.image.ImageData(
-            width, height, "AXXX", self._bitmap_data, self._bitmap_rect.right * 4
-        )
+        image = pyglet.image.ImageData(width, height, 
+            'AXXX', self._bitmap_data, self._bitmap_rect.right * 4)
         return image
-
+        
     def _create_bitmap(self, width, height):
         self._black = gdi32.GetStockObject(BLACK_BRUSH)
         self._white = gdi32.GetStockObject(WHITE_BRUSH)
@@ -200,13 +195,13 @@ class GDIGlyphRenderer(Win32GlyphRenderer):
         info.bmiHeader.biWidth = width
         info.bmiHeader.biHeight = height
         info.bmiHeader.biPlanes = 1
-        info.bmiHeader.biBitCount = 32
+        info.bmiHeader.biBitCount = 32 
         info.bmiHeader.biCompression = BI_RGB
 
         self._dc = gdi32.CreateCompatibleDC(None)
-        self._bitmap = gdi32.CreateDIBSection(
-            None, byref(info), DIB_RGB_COLORS, byref(data), None, 0
-        )
+        self._bitmap = gdi32.CreateDIBSection(None,
+            byref(info), DIB_RGB_COLORS, byref(data), None,
+            0)
         # Spookiness: the above line causes a "not enough storage" error,
         # even though that error cannot be generated according to docs,
         # and everything works fine anyway.  Call SetLastError to clear it.
@@ -221,12 +216,11 @@ class GDIGlyphRenderer(Win32GlyphRenderer):
         self._bitmap_height = height
 
         if _debug_font:
-            _debug("%r._create_dc(%d, %d)" % (self, width, height))
-            _debug("_dc = %r" % self._dc)
-            _debug("_bitmap = %r" % self._bitmap)
-            _debug("pitch = %r" % pitch)
-            _debug("info.bmiHeader.biSize = %r" % info.bmiHeader.biSize)
-
+            _debug('%r._create_dc(%d, %d)' % (self, width, height))
+            _debug('_dc = %r' % self._dc)
+            _debug('_bitmap = %r' % self._bitmap)
+            _debug('pitch = %r' % pitch)
+            _debug('info.bmiHeader.biSize = %r' % info.bmiHeader.biSize)
 
 class Win32Font(base.Font):
     glyph_renderer_class = GDIGlyphRenderer
@@ -276,6 +270,5 @@ class Win32Font(base.Font):
     def add_font_data(cls, data):
         numfonts = c_uint32()
         gdi32.AddFontMemResourceEx(data, len(data), 0, byref(numfonts))
-
 
 # ...

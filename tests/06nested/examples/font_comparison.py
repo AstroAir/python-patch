@@ -33,29 +33,28 @@
 # POSSIBILITY OF SUCH DAMAGE.
 # ----------------------------------------------------------------------------
 
-"""A simple tool that may be used to compare font faces.
+'''A simple tool that may be used to compare font faces.
 
 Use the left/right cursor keys to change font faces.
-"""
+'''
 
-__docformat__ = "restructuredtext"
-__version__ = "$Id: $"
+__docformat__ = 'restructuredtext'
+__version__ = '$Id: $'
 import pyglet
 
-FONTS = ["Andale Mono", "Consolas", "Inconsolata", "Inconsolata-dz", "Monaco", "Menlo"]
+FONTS = ['Andale Mono', 'Consolas', 'Inconsolata', 'Inconsolata-dz', 'Monaco',
+    'Menlo']
 
-SAMPLE = """class Spam(object):
+SAMPLE = '''class Spam(object):
 	def __init__(self):
 		# The quick brown fox
 		self.spam = {"jumped": 'over'}
     @the
 	def lazy(self, *dog):
-		self.dog = [lazy, lazy]"""
-
+		self.dog = [lazy, lazy]'''
 
 class Window(pyglet.window.Window):
     font_num = 0
-
     def on_text_motion(self, motion):
         if motion == pyglet.window.key.MOTION_RIGHT:
             self.font_num += 1
@@ -67,22 +66,15 @@ class Window(pyglet.window.Window):
                 self.font_num = len(FONTS) - 1
 
         face = FONTS[self.font_num]
-        self.head = pyglet.text.Label(face, font_size=24, y=0, anchor_y="bottom")
-        self.text = pyglet.text.Label(
-            SAMPLE,
-            font_name=face,
-            font_size=18,
-            y=self.height,
-            anchor_y="top",
-            width=self.width,
-            multiline=True,
-        )
+        self.head = pyglet.text.Label(face, font_size=24, y=0,
+            anchor_y='bottom')
+        self.text = pyglet.text.Label(SAMPLE, font_name=face, font_size=18,
+            y=self.height, anchor_y='top', width=self.width, multiline=True)
 
     def on_draw(self):
         self.clear()
         self.head.draw()
         self.text.draw()
-
 
 window = Window()
 window.on_text_motion(None)
