@@ -18,10 +18,31 @@ if TYPE_CHECKING:
 
 
 def diffstat(patchset: "PatchSet") -> str:
-    """calculate diffstat and return as a string
+    """Calculate diffstat for a PatchSet and return as formatted string.
+
+    Generates a summary showing files changed, lines added/removed, and
+    a visual histogram similar to 'git diff --stat' or 'diffstat' command.
+
+    Args:
+        patchset (PatchSet): The PatchSet to analyze.
+
+    Returns:
+        str: Formatted diffstat string containing:
+            - One line per file with filename, change count, and histogram
+            - Summary line with total files, insertions, deletions, and byte change
+
+    Example:
+        >>> patchset = fromfile('changes.patch')
+        >>> print(diffstat(patchset))
+         file1.txt |  5 ++---
+         file2.txt | 12 ++++++++++++
+         2 files changed, 14 insertions(+), 3 deletions(-), +45 bytes
+
     Notes:
-      - original diffstat ouputs target filename
-      - single + or - shouldn't escape histogram
+        - Uses target filename for display (like original diffstat)
+        - Histogram width adapts to terminal width (max 80 chars)
+        - Single + or - characters are preserved in histogram
+        - Calculates byte size changes in addition to line changes
     """
     names = []
     insert = []
@@ -82,7 +103,33 @@ def diffstat(patchset: "PatchSet") -> str:
 
 
 def findfile(old: Optional[bytes], new: Optional[bytes]) -> Optional[bytes]:
-    """return name of file to be patched or None"""
+    """Find which file should be patched based on old and new filenames.
+
+    Determines the target file for patching by checking which of the
+    old or new filenames exists on the filesystem. Prefers the old
+    filename if both exist.
+
+    Args:
+        old (Optional[bytes]): Source filename from patch (--- line).
+        new (Optional[bytes]): Target filename from patch (+++ line).
+
+    Returns:
+        Optional[bytes]: The filename that exists and should be patched,
+            or None if neither file exists or both inputs are None/empty.
+
+    Example:
+        >>> # File exists as old name
+        >>> result = findfile(b'existing_file.txt', b'new_name.txt')
+        >>> print(result)  # b'existing_file.txt'
+        >>>
+        >>> # File exists as new name (rename case)
+        >>> result = findfile(b'deleted_file.txt', b'existing_new.txt')
+        >>> print(result)  # b'existing_new.txt'
+
+    Note:
+        This function handles Google Code's broken patch format by
+        stripping path prefixes when necessary.
+    """
     # Handle None inputs
     if old is None or new is None:
         return None
@@ -110,11 +157,35 @@ def findfile(old: Optional[bytes], new: Optional[bytes]) -> Optional[bytes]:
 
 
 def can_patch(patchset: "PatchSet", filename: Union[str, bytes]) -> Optional[bool]:
-    """Check if specified filename can be patched. Returns None if file can
-    not be found among source filenames. False if patch can not be applied
-    clearly. True otherwise.
+    """Check if the specified file can be cleanly patched.
 
-    :returns: True, False or None
+    Verifies whether patches in the PatchSet can be applied to the given file
+    by checking if the file exists and if patch hunks match the file content.
+
+    Args:
+        patchset (PatchSet): The PatchSet containing patches to check.
+        filename (Union[str, bytes]): Path to the file to check for patchability.
+            Can be provided as string or bytes.
+
+    Returns:
+        Optional[bool]:
+            - True: File can be patched cleanly (all hunks match)
+            - False: File exists but patch cannot be applied (conflicts detected)
+            - None: File not found among source filenames in the patchset
+
+    Example:
+        >>> patchset = fromfile('changes.patch')
+        >>> result = can_patch(patchset, 'myfile.txt')
+        >>> if result is True:
+        ...     print("File can be patched cleanly")
+        >>> elif result is False:
+        ...     print("File has conflicts - manual intervention needed")
+        >>> else:
+        ...     print("File not affected by this patch")
+
+    Note:
+        This function performs a dry-run check without modifying files.
+        It's useful for validating patches before applying them.
     """
     # Handle both bytes and string input
     if isinstance(filename, bytes):
@@ -145,6 +216,30 @@ def can_patch(patchset: "PatchSet", filename: Union[str, bytes]) -> Optional[boo
 
 
 def match_file_hunks(filepath: Union[str, bytes], hunks: List["Hunk"]) -> bool:
+    """Check if all hunks match the content of the specified file.
+
+    Validates that each hunk in the list can be applied to the file
+    by checking if the context and removed lines match the file content.
+
+    Args:
+        filepath (Union[str, bytes]): Path to the file to check.
+            Can be provided as string or bytes.
+        hunks (List[Hunk]): List of hunks to validate against the file.
+
+    Returns:
+        bool: True if all hunks match the file content, False otherwise.
+
+    Example:
+        >>> hunks = patch.hunks  # Get hunks from a patch
+        >>> if match_file_hunks('myfile.txt', hunks):
+        ...     print("All hunks match - safe to apply")
+        ... else:
+        ...     print("Conflicts detected - manual review needed")
+
+    Note:
+        This function is used internally by can_patch() and apply()
+        to validate patches before modification.
+    """
     matched = True
     if isinstance(filepath, bytes):
         filepath_str = filepath.decode("utf-8", errors="replace")
@@ -193,10 +288,29 @@ def match_file_hunks(filepath: Union[str, bytes], hunks: List["Hunk"]) -> bool:
 
 
 def patch_stream(instream: IO[bytes], hunks: List["Hunk"]) -> Iterator[bytes]:
-    """Generator that yields stream patched with hunks iterable
+    """Apply hunks to an input stream and yield the patched output.
 
-    Converts lineends in hunk lines to the best suitable format
-    autodetected from input
+    Generator function that reads from the input stream and applies the
+    provided hunks, yielding the resulting patched lines. Automatically
+    detects and converts line endings to match the input format.
+
+    Args:
+        instream (IO[bytes]): Input byte stream to patch.
+        hunks (List[Hunk]): List of hunks to apply to the stream.
+
+    Yields:
+        bytes: Patched lines from the stream with appropriate line endings.
+
+    Example:
+        >>> with open('input.txt', 'rb') as f:
+        ...     patched_lines = list(patch_stream(f, patch.hunks))
+        >>> with open('output.txt', 'wb') as f:
+        ...     f.writelines(patched_lines)
+
+    Note:
+        - Line endings are automatically converted to match input format
+        - Handles mixed line endings with warnings
+        - Preserves original line ending style (LF, CRLF, CR)
     """
 
     # todo: At the moment substituted lineends may not be the same
@@ -257,6 +371,30 @@ def patch_stream(instream: IO[bytes], hunks: List["Hunk"]) -> Iterator[bytes]:
 def write_hunks(
     srcname: Union[str, bytes], tgtname: Union[str, bytes], hunks: List["Hunk"]
 ) -> bool:
+    """Apply hunks to a source file and write the result to a target file.
+
+    Reads the source file, applies the provided hunks, and writes the
+    patched content to the target file. Preserves file permissions.
+
+    Args:
+        srcname (Union[str, bytes]): Path to the source file to read from.
+        tgtname (Union[str, bytes]): Path to the target file to write to.
+        hunks (List[Hunk]): List of hunks to apply.
+
+    Returns:
+        bool: True if the operation completed successfully.
+
+    Example:
+        >>> # Apply hunks to create a new file
+        >>> success = write_hunks('original.txt', 'patched.txt', patch.hunks)
+        >>> if success:
+        ...     print("Patch applied successfully")
+
+    Note:
+        - Source file permissions are copied to the target file
+        - Target file is created or overwritten
+        - Uses patch_stream() internally for the actual patching
+    """
     if isinstance(srcname, bytes):
         srcname_str = srcname.decode("utf-8", errors="replace")
     else:

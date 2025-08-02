@@ -20,6 +20,49 @@ from .logging_utils import logger, streamhandler, setdebug
 
 
 def main() -> None:
+    """Main entry point for the patch command-line utility.
+
+    Provides a command-line interface for applying unified diff patches.
+    Supports reading patches from files, URLs, or stdin, with various
+    options for controlling patch application behavior.
+
+    Command-line Options:
+        -q, --quiet: Print only warnings and errors
+        -v, --verbose: Enable verbose output
+        --debug: Enable debug mode with detailed logging
+        --diffstat: Print diffstat summary and exit
+        -d DIR, --directory DIR: Specify root directory for patch application
+        -p N, --strip N: Strip N leading path components from filenames
+        --revert: Apply patch in reverse order (unpatch)
+
+    Usage Examples:
+        # Apply patch from file
+        python -m patch changes.patch
+
+        # Apply with path stripping
+        python -m patch -p1 changes.patch
+
+        # Download and apply patch from URL
+        python -m patch https://example.com/changes.patch
+
+        # Read patch from stdin
+        cat changes.patch | python -m patch --
+
+        # Show diffstat only
+        python -m patch --diffstat changes.patch
+
+        # Revert a previously applied patch
+        python -m patch --revert changes.patch
+
+    Exit Codes:
+        0: Success
+        -1: Patch application failed
+        Other: Various error conditions (file not found, parsing failed, etc.)
+
+    Note:
+        Automatically detects patch format (Git, SVN, Mercurial, or plain diff)
+        and handles line ending conversions appropriately.
+    """
     opt = OptionParser(
         usage="1. %prog [options] unified.diff\n"
         "       2. %prog [options] http://host/patch\n"

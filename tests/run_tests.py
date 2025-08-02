@@ -150,7 +150,7 @@ class TestPatchFiles(unittest.TestCase):
 
         # 3.
         # test utility as a whole
-        patch_tool = join(dirname(TESTS), "patch_new.py")
+        patch_tool = join(dirname(TESTS), "patch.py")
         save_cwd = getcwdu()
         os.chdir(tmpdir)
         if verbose:

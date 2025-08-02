@@ -18,11 +18,34 @@ if TYPE_CHECKING:
 
 
 class wrapumerate(object):
-    """Enumerate wrapper that uses boolean end of stream status instead of
-    StopIteration exception, and properties to access line information.
+    """Enumerate wrapper for stream parsing with boolean end-of-stream status.
+
+    Provides a more convenient interface for parsing streams by using boolean
+    return values instead of StopIteration exceptions. Tracks line numbers
+    and provides easy access to current line content.
+
+    Attributes:
+        is_empty (bool): True if the stream has been exhausted.
+        line (Union[bytes, bool]): Current line content, or False if exhausted.
+        lineno (Union[int, bool]): Current line number (0-based), or False if exhausted.
+
+    Example:
+        >>> from io import BytesIO
+        >>> stream = BytesIO(b'line1\\nline2\\nline3\\n')
+        >>> wrapper = wrapumerate(stream)
+        >>> while wrapper.next():
+        ...     print(f"Line {wrapper.lineno}: {wrapper.line}")
+        Line 0: b'line1\\n'
+        Line 1: b'line2\\n'
+        Line 2: b'line3\\n'
     """
 
     def __init__(self, stream: Iterator[bytes]) -> None:
+        """Initialize the wrapper with a byte stream.
+
+        Args:
+            stream (Iterator[bytes]): Iterable byte stream to wrap.
+        """
         self._stream = enumerate(stream)
         self._exhausted = False
         # after end of stream equal to the num of lines
@@ -31,8 +54,16 @@ class wrapumerate(object):
         self._line: Union[bytes, bool] = False
 
     def next(self) -> bool:
-        """Try to read the next line and return True if it is available,
-        False if end of stream is reached."""
+        """Try to read the next line and return True if it is available.
+
+        Returns:
+            bool: True if a line was successfully read, False if end of stream.
+
+        Example:
+            >>> wrapper = wrapumerate(stream)
+            >>> if wrapper.next():
+            ...     print(f"Got line: {wrapper.line}")
+        """
         if self._exhausted:
             return False
 
@@ -46,22 +77,59 @@ class wrapumerate(object):
 
     @property
     def is_empty(self) -> bool:
+        """Check if the stream has been exhausted.
+
+        Returns:
+            bool: True if no more lines are available.
+        """
         return self._exhausted
 
     @property
     def line(self) -> Union[bytes, bool]:
+        """Get the current line content.
+
+        Returns:
+            Union[bytes, bool]: Current line as bytes, or False if exhausted.
+        """
         return self._line
 
     @property
     def lineno(self) -> Union[int, bool]:
+        """Get the current line number.
+
+        Returns:
+            Union[int, bool]: Current line number (0-based), or False if exhausted.
+        """
         return self._lineno
 
 
 def detect_type(p: "Patch") -> str:
-    """detect and return type for the specified Patch object
-    analyzes header and filenames info
+    """Detect and return the patch format type for the specified Patch object.
 
-    NOTE: must be run before filenames are normalized
+    Analyzes patch headers and filename patterns to determine the source
+    control system or diff format that generated the patch.
+
+    Args:
+        p (Patch): Patch object to analyze.
+
+    Returns:
+        str: Patch type constant (SVN, GIT, HG, or PLAIN).
+            - SVN: Subversion patches with "Index:" headers
+            - GIT: Git patches with "diff --git" and "index" lines
+            - HG: Mercurial patches with "diff -r" or HG changeset markers
+            - PLAIN: Standard unified diff format
+
+    Example:
+        >>> patch = Patch()
+        >>> patch.header = [b'diff --git a/file.txt b/file.txt',
+        ...                 b'index abc123..def456 100644']
+        >>> patch.source = b'a/file.txt'
+        >>> patch.target = b'b/file.txt'
+        >>> print(detect_type(patch))  # 'git'
+
+    Note:
+        This function must be called before normalize_filenames() as it
+        relies on the original a/ and b/ prefixes for detection.
     """
 
     # check for SVN
@@ -130,15 +198,37 @@ def detect_type(p: "Patch") -> str:
 
 
 def normalize_filenames(patchset: "PatchSet") -> None:
-    """sanitize filenames, normalizing paths, i.e.:
-    1. strip a/ and b/ prefixes from GIT and HG style patches
-    2. remove all references to parent directories (with warning)
-    3. translate any absolute paths to relative (with warning)
+    """Sanitize and normalize filenames in all patches for security and compatibility.
 
-    [x] always use forward slashes to be crossplatform
-        (diff/patch were born as a unix utility after all)
+    Performs several important normalizations to ensure patches can be safely
+    applied and work across different platforms:
 
-    return None
+    1. Strip a/ and b/ prefixes from Git and Mercurial style patches
+    2. Remove all references to parent directories (../) with warnings
+    3. Convert absolute paths to relative paths with warnings
+    4. Normalize path separators to forward slashes for cross-platform compatibility
+
+    Args:
+        patchset (PatchSet): PatchSet containing patches to normalize.
+
+    Returns:
+        None: Modifies the patchset in place.
+
+    Example:
+        >>> patchset = PatchSet()
+        >>> # Before normalization: source=b'a/path/to/file.txt'
+        >>> normalize_filenames(patchset)
+        >>> # After normalization: source=b'path/to/file.txt'
+
+    Security Note:
+        This function is critical for security as it prevents:
+        - Directory traversal attacks via ../ sequences
+        - Absolute path exploits that could overwrite system files
+        - Platform-specific path issues
+
+    Warning:
+        Issues warnings for any suspicious path patterns and increments
+        the patchset's warning counter.
     """
     if debugmode:
         debug("normalize filenames")

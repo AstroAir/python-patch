@@ -31,11 +31,33 @@ T = TypeVar("T")
 if not PY3K:
 
     def compat_next(gen: Iterator[T]) -> T:
+        """Python 2 compatible next() function.
+
+        Args:
+            gen (Iterator[T]): Iterator to get next item from.
+
+        Returns:
+            T: Next item from the iterator.
+
+        Raises:
+            StopIteration: When iterator is exhausted.
+        """
         return gen.next()  # type: ignore[attr-defined,no-any-return]
 
 else:
 
     def compat_next(gen: Iterator[T]) -> T:
+        """Python 3 compatible next() function.
+
+        Args:
+            gen (Iterator[T]): Iterator to get next item from.
+
+        Returns:
+            T: Next item from the iterator.
+
+        Raises:
+            StopIteration: When iterator is exhausted.
+        """
         return gen.__next__()
 
 
@@ -58,9 +80,33 @@ def _decode_utf8(b: bytes) -> str:
 
 
 def tostr(b: StrOrByteLike) -> str:
-    """Python 3 bytes encoder. Used to print filename in
-    diffstat output. Assumes that filenames are in utf-8.
-    Always returns str.
+    """Convert bytes-like objects to string for display purposes.
+
+    Safely converts bytes, bytearray, memoryview, or string objects to
+    string format for printing filenames and other text output. Assumes
+    UTF-8 encoding for byte sequences.
+
+    Args:
+        b (StrOrByteLike): Input to convert - can be str, bytes, bytearray, or memoryview.
+
+    Returns:
+        str: String representation of the input.
+
+    Examples:
+        >>> tostr(b'filename.txt')
+        'filename.txt'
+        >>> tostr('already_string.txt')
+        'already_string.txt'
+        >>> tostr(bytearray(b'test.txt'))
+        'test.txt'
+
+    Note:
+        This function is primarily used for displaying filenames in diffstat
+        output and other user-facing messages. It assumes UTF-8 encoding
+        for byte sequences, which may not be appropriate for all filenames.
+
+    Raises:
+        UnicodeDecodeError: If bytes cannot be decoded as UTF-8.
     """
     if not PY3K:
         # In Python 2, tostr historically returned the input for printing.
