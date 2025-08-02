@@ -299,10 +299,22 @@ class TestApiIntegration:
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(invalid_content)
             f.flush()
+            temp_filename = f.name
+        
+        try:
+            assert fromfile(temp_filename) is False
+        finally:
             try:
-                assert fromfile(f.name) is False
-            finally:
-                os.unlink(f.name)
+                os.unlink(temp_filename)
+            except (OSError, PermissionError):
+                # On Windows, sometimes the file is still locked
+                # Try again after a brief moment
+                import time
+                time.sleep(0.1)
+                try:
+                    os.unlink(temp_filename)
+                except (OSError, PermissionError):
+                    pass  # If we still can't delete it, that's okay for the test
 
         # fromurl should return False for invalid content
         mock_response = MagicMock()
