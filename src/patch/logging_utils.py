@@ -43,7 +43,7 @@ debugmode = False
 
 
 def setdebug() -> None:
-    global debugmode, streamhandler
+    global debugmode
 
     debugmode = True
     loglevel = logging.DEBUG

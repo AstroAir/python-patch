@@ -25,9 +25,31 @@ if TYPE_CHECKING:
 
 
 class Hunk(object):
-    """Parsed hunk data container (hunk starts with @@ -R +R @@)"""
+    """Parsed hunk data container representing a single diff hunk.
+
+    A hunk represents a contiguous block of changes in a unified diff format,
+    starting with a line like "@@ -R +R @@" where R indicates line ranges.
+
+    Attributes:
+        startsrc (Optional[int]): Starting line number in source file (1-based).
+        linessrc (Optional[int]): Number of lines from source file in this hunk.
+        starttgt (Optional[int]): Starting line number in target file (1-based).
+        linestgt (Optional[int]): Number of lines in target file for this hunk.
+        invalid (bool): True if hunk parsing failed or hunk is malformed.
+        desc (str): Description text following the @@ line (usually function name).
+        text (List[bytes]): Raw hunk content lines including +, -, and context lines.
+
+    Example:
+        >>> hunk = Hunk()
+        >>> hunk.startsrc = 10
+        >>> hunk.linessrc = 3
+        >>> hunk.starttgt = 10
+        >>> hunk.linestgt = 4
+        >>> hunk.text = [b' context line', b'-removed line', b'+added line']
+    """
 
     def __init__(self) -> None:
+        """Initialize a new Hunk object with default values."""
         self.startsrc: Optional[int] = None  #: line count starts with 1
         self.linessrc: Optional[int] = None
         self.starttgt: Optional[int] = None
@@ -49,11 +71,30 @@ class Hunk(object):
 
 
 class Patch(object):
-    """Patch for a single file.
-    If used as an iterable, returns hunks.
+    """Represents a patch for a single file containing one or more hunks.
+
+    A Patch object contains all the changes for a single file, including
+    metadata like source/target filenames and the actual diff hunks.
+    When used as an iterable, yields individual Hunk objects.
+
+    Attributes:
+        source (Optional[bytes]): Source filename (from "--- " line).
+        target (Optional[bytes]): Target filename (from "+++ " line).
+        hunks (List[Hunk]): List of Hunk objects containing the actual changes.
+        hunkends (Dict[str, int]): Statistics about line ending types in hunks.
+        header (List[bytes]): Header lines preceding the file diff.
+        type (Optional[str]): Patch type (e.g., 'git', 'svn', 'plain').
+
+    Example:
+        >>> patch = Patch()
+        >>> patch.source = b'old_file.txt'
+        >>> patch.target = b'new_file.txt'
+        >>> for hunk in patch:  # Iterate over hunks
+        ...     print(f"Hunk at line {hunk.startsrc}")
     """
 
     def __init__(self) -> None:
+        """Initialize a new Patch object with default values."""
         self.source: Optional[bytes] = None
         self.target: Optional[bytes] = None
         self.hunks: List[Hunk] = []
@@ -63,16 +104,51 @@ class Patch(object):
         self.type: Optional[str] = None
 
     def __iter__(self) -> Iterator[Hunk]:
+        """Iterate over hunks in this patch.
+
+        Yields:
+            Hunk: Each hunk in the patch.
+        """
         for h in self.hunks:
             yield h
 
 
 class PatchSet(object):
-    """PatchSet is a patch parser and container.
-    When used as an iterable, returns patches.
+    """A collection of patches parsed from a unified diff stream.
+
+    PatchSet is the main class for parsing and applying unified diff patches.
+    It can contain multiple Patch objects, each representing changes to a single file.
+    When used as an iterable, yields individual Patch objects.
+
+    Attributes:
+        name (Optional[str]): Name of the patch set (e.g., filename).
+        type (Optional[str]): Type of patch format ('git', 'svn', 'plain', 'mixed').
+        items (List[Patch]): List of Patch objects, one per file.
+        errors (int): Number of fatal parsing errors encountered.
+        warnings (int): Number of non-critical warnings encountered.
+
+    Example:
+        >>> # Parse from file
+        >>> with open('changes.patch', 'rb') as f:
+        ...     patchset = PatchSet(f)
+        >>>
+        >>> # Check for errors
+        >>> if patchset.errors == 0:
+        ...     print(f"Successfully parsed {len(patchset)} patches")
+        ...     for patch in patchset:
+        ...         print(f"File: {patch.target}")
+        >>>
+        >>> # Apply patches
+        >>> success = patchset.apply(strip=1)
     """
 
     def __init__(self, stream: Optional[IO[bytes]] = None) -> None:
+        """Initialize a new PatchSet.
+
+        Args:
+            stream (Optional[IO[bytes]]): Optional byte stream to parse immediately.
+                If provided, parse() will be called automatically.
+        """
         # --- API accessible fields ---
 
         # name of the PatchSet (filename or ...)
@@ -91,15 +167,53 @@ class PatchSet(object):
             self.parse(stream)
 
     def __len__(self) -> int:
+        """Return the number of patches in this set.
+
+        Returns:
+            int: Number of Patch objects in this PatchSet.
+        """
         return len(self.items)
 
     def __iter__(self) -> Iterator[Patch]:
+        """Iterate over patches in this set.
+
+        Yields:
+            Patch: Each patch in the set.
+        """
         for i in self.items:
             yield i
 
     def parse(self, stream: IO[bytes]) -> bool:
-        """parse unified diff
-        return True on success
+        """Parse a unified diff from a byte stream.
+
+        Parses the provided stream and populates this PatchSet with Patch objects.
+        Supports multiple patch formats including plain diff, Git, SVN, and Mercurial.
+
+        Args:
+            stream (IO[bytes]): Byte stream containing unified diff data.
+                Can be a file object, BytesIO, or any readable byte stream.
+
+        Returns:
+            bool: True if parsing completed without fatal errors, False otherwise.
+                Check the 'errors' attribute for the number of fatal errors.
+                Check the 'warnings' attribute for non-critical issues.
+
+        Example:
+            >>> from io import BytesIO
+            >>> diff_data = b'''--- a/file.txt
+            ... +++ b/file.txt
+            ... @@ -1,3 +1,3 @@
+            ...  line1
+            ... -old line
+            ... +new line
+            ...  line3'''
+            >>> patchset = PatchSet()
+            >>> success = patchset.parse(BytesIO(diff_data))
+            >>> print(f"Parsed {len(patchset)} patches, {patchset.errors} errors")
+
+        Note:
+            This method automatically detects patch type and normalizes filenames.
+            Mixed line endings are detected and warnings are issued.
         """
         lineends = dict(lf=0, crlf=0, cr=0)
         nexthunkno = 0  #: even if index starts with 0 user messages number hunks from 1
@@ -476,23 +590,76 @@ class PatchSet(object):
         return self.errors == 0
 
     def diffstat(self) -> str:
-        """calculate diffstat and return as a string"""
+        """Calculate and return diffstat as a formatted string.
+
+        Generates a summary of changes showing files modified, lines added/removed,
+        and a histogram visualization similar to 'git diff --stat'.
+
+        Returns:
+            str: Formatted diffstat string showing:
+                - Filename and change counts per file
+                - Visual histogram with + and - characters
+                - Summary line with totals
+
+        Example:
+            >>> patchset = PatchSet(open('changes.patch', 'rb'))
+            >>> print(patchset.diffstat())
+             file1.txt |  5 ++---
+             file2.txt | 12 ++++++++++++
+             2 files changed, 14 insertions(+), 3 deletions(-), +45 bytes
+        """
         from .application import diffstat
 
         return diffstat(self)
 
     def findfile(self, old: bytes, new: bytes) -> Optional[bytes]:
-        """return name of file to be patched or None"""
+        """Find which file should be patched based on old and new filenames.
+
+        Determines the target file for patching by checking which of the
+        old or new filenames exists on the filesystem.
+
+        Args:
+            old (bytes): Source filename from the patch (--- line).
+            new (bytes): Target filename from the patch (+++ line).
+
+        Returns:
+            Optional[bytes]: The filename that exists and should be patched,
+                or None if neither file exists or inputs are invalid.
+
+        Example:
+            >>> patchset = PatchSet()
+            >>> filename = patchset.findfile(b'old_file.txt', b'new_file.txt')
+            >>> if filename:
+            ...     print(f"Will patch: {filename.decode()}")
+        """
         from .application import findfile
 
         return findfile(old, new)
 
     def can_patch(self, filename: bytes) -> Optional[bool]:
-        """Check if specified filename can be patched. Returns None if file can
-        not be found among source filenames. False if patch can not be applied
-        clearly. True otherwise.
+        """Check if the specified file can be cleanly patched.
 
-        :returns: True, False or None
+        Verifies whether the patch can be applied to the given file by checking
+        if the file exists and if the patch hunks match the file content.
+
+        Args:
+            filename (bytes): Path to the file to check for patchability.
+
+        Returns:
+            Optional[bool]:
+                - True: File can be patched cleanly
+                - False: File exists but patch cannot be applied (conflicts)
+                - None: File not found among source filenames in this patchset
+
+        Example:
+            >>> patchset = PatchSet(open('changes.patch', 'rb'))
+            >>> result = patchset.can_patch(b'myfile.txt')
+            >>> if result is True:
+            ...     print("File can be patched cleanly")
+            >>> elif result is False:
+            ...     print("File has conflicts")
+            >>> else:
+            ...     print("File not found in patch")
         """
         from .application import can_patch
 
@@ -504,7 +671,26 @@ class PatchSet(object):
         return match_file_hunks(filepath, hunks)
 
     def patch_stream(self, instream: IO[bytes], hunks: List[Hunk]) -> Iterator[bytes]:
-        """Generator that yields stream patched with hunks iterable"""
+        """Apply hunks to an input stream and yield the patched output.
+
+        Generator function that reads from the input stream and applies the
+        provided hunks, yielding the resulting patched lines.
+
+        Args:
+            instream (IO[bytes]): Input byte stream to patch.
+            hunks (List[Hunk]): List of hunks to apply to the stream.
+
+        Yields:
+            bytes: Patched lines from the stream.
+
+        Example:
+            >>> with open('input.txt', 'rb') as f:
+            ...     for line in patchset.patch_stream(f, patch.hunks):
+            ...         print(line.decode(), end='')
+
+        Note:
+            Line endings are automatically converted to match the input format.
+        """
         from .application import patch_stream
 
         return patch_stream(instream, hunks)
@@ -521,14 +707,60 @@ class PatchSet(object):
         reverse_patchset(self)
 
     def dump(self) -> None:
+        """Print the patch content in unified diff format to stdout.
+
+        Outputs the complete patch in standard unified diff format,
+        including headers, filenames, and all hunk content.
+
+        Example:
+            >>> patchset = PatchSet(open('changes.patch', 'rb'))
+            >>> patchset.dump()  # Prints patch content to console
+            --- a/file.txt
+            +++ b/file.txt
+            @@ -1,3 +1,3 @@
+             line1
+            -old line
+            +new line
+             line3
+
+        Note:
+            This method is primarily useful for debugging or
+            regenerating patch files.
+        """
         from .application import dump_patchset
 
         dump_patchset(self)
 
     def apply(self, strip: Union[int, str] = 0, root: Optional[str] = None) -> bool:
-        """Apply parsed patch, optionally stripping leading components
-        from file paths. `root` parameter specifies working dir.
-        return True on success
+        """Apply all patches in this PatchSet to the filesystem.
+
+        Applies each patch to its corresponding file, creating backups and
+        handling path stripping as specified.
+
+        Args:
+            strip (Union[int, str]): Number of leading path components to strip
+                from filenames. For example, strip=1 converts 'a/file.txt' to 'file.txt'.
+                Can be provided as int or string. Defaults to 0 (no stripping).
+            root (Optional[str]): Working directory for patch application.
+                If provided, changes to this directory before applying patches
+                and restores the original directory afterward.
+
+        Returns:
+            bool: True if all patches applied successfully, False if any errors occurred.
+
+        Example:
+            >>> patchset = PatchSet(open('changes.patch', 'rb'))
+            >>> # Apply with path stripping (remove 'a/' and 'b/' prefixes)
+            >>> success = patchset.apply(strip=1)
+            >>> if success:
+            ...     print("All patches applied successfully")
+            >>> else:
+            ...     print("Some patches failed to apply")
+
+        Note:
+            - Creates .orig backup files before modifying originals
+            - Preserves file permissions from source files
+            - Validates hunks before applying to detect conflicts
         """
         prevdir: Optional[str] = None
         if root:
@@ -704,7 +936,34 @@ class PatchSet(object):
         return errors == 0
 
     def revert(self, strip: Union[int, str] = 0, root: Optional[str] = None) -> bool:
-        """apply patch in reverse order"""
+        """Revert patches by applying them in reverse.
+
+        Creates a reversed copy of this PatchSet and applies it, effectively
+        undoing the changes that would be made by apply().
+
+        Args:
+            strip (Union[int, str]): Number of leading path components to strip
+                from filenames. Same as apply() method.
+            root (Optional[str]): Working directory for patch reversion.
+                Same as apply() method.
+
+        Returns:
+            bool: True if all patches reverted successfully, False otherwise.
+
+        Example:
+            >>> # Apply patches
+            >>> patchset = PatchSet(open('changes.patch', 'rb'))
+            >>> patchset.apply(strip=1)
+            >>>
+            >>> # Later, revert the changes
+            >>> success = patchset.revert(strip=1)
+            >>> if success:
+            ...     print("Changes reverted successfully")
+
+        Note:
+            This method creates a deep copy of the PatchSet to avoid
+            modifying the original patch data.
+        """
         reverted = copy.deepcopy(self)
         reverted._reverse()
         return reverted.apply(strip, root)
