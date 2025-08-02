@@ -176,6 +176,10 @@ def fromstring(s):
   """ Parse text string and return PatchSet()
       object (or False if parsing fails)
   """
+  # Handle both string and bytes input
+  if isinstance(s, str):
+    s = s.encode('utf-8')
+
   ps = PatchSet( StringIO(s) )
   if ps.errors == 0:
     return ps
@@ -200,6 +204,12 @@ def pathstrip(path, n):
   pathlist = [path]
   while os.path.dirname(pathlist[0]) != b'':
     pathlist[0:1] = os.path.split(pathlist[0])
+
+  # If n is greater than or equal to the number of components,
+  # return the last component (filename)
+  if n >= len(pathlist):
+    return pathlist[-1] if pathlist else b''
+
   return b'/'.join(pathlist[n:])
 # --- /Utility function ---
 
@@ -588,9 +598,10 @@ class PatchSet(object):
       elif headscan:
         if len(self.items) == 0:
           warning("error: no patch data found!")
+          self.errors += 1
           return False
         else: # extra data at the end of file
-          pass 
+          pass
       else:
         warning("error: patch stream is incomplete!")
         self.errors += 1
@@ -646,15 +657,16 @@ class PatchSet(object):
     #      add git diff with spaced filename
     # TODO http://www.kernel.org/pub/software/scm/git/docs/git-diff.html
 
-    # Git patch header len is 2 min
+    # Git patch header detection
     if len(p.header) > 1:
       # detect the start of diff header - there might be some comments before
       for idx in reversed(range(len(p.header))):
         if p.header[idx].startswith(b"diff --git"):
           break
       if p.header[idx].startswith(b'diff --git a/'):
+        # Check if there's an index line (typical for Git)
         if (idx+1 < len(p.header)
-            and re.match(b'index \\w{7}..\\w{7} \\d{6}', p.header[idx+1])):
+            and re.match(b'index \\w+\\.\\.\\w+ \\d+', p.header[idx+1])):
           if DVCS:
             return GIT
 
@@ -670,10 +682,11 @@ class PatchSet(object):
     # TODO add MQ
     # TODO add revision info
     if len(p.header) > 0:
-      if DVCS and re.match(b'diff -r \\w{12} .*', p.header[-1]):
+      if DVCS and re.match(b'diff -r \\w+ .*', p.header[-1]):
         return HG
+      # Check for HG changeset patch marker or Git-style HG patches
       if DVCS and p.header[-1].startswith(b'diff --git a/'):
-        if len(p.header) == 1:  # native Git patch header len is 2
+        if len(p.header) == 1:  # Git-style HG patch has only one header line
           return HG
         elif p.header[0].startswith(b'# HG changeset patch'):
           return HG
@@ -702,14 +715,16 @@ class PatchSet(object):
       if p.type in (HG, GIT):
         # TODO: figure out how to deal with /dev/null entries
         debug("stripping a/ and b/ prefixes")
-        if p.source != '/dev/null':
+        if p.source != b'/dev/null':
           if not p.source.startswith(b"a/"):
             warning("invalid source filename")
+            self.warnings += 1
           else:
             p.source = p.source[2:]
-        if p.target != '/dev/null':
+        if p.target != b'/dev/null':
           if not p.target.startswith(b"b/"):
             warning("invalid target filename")
+            self.warnings += 1
           else:
             p.target = p.target[2:]
 
@@ -729,14 +744,14 @@ class PatchSet(object):
         self.warnings += 1
         while p.target.startswith(b".." + sep):
           p.target = p.target.partition(sep)[2]
-      # absolute paths are not allowed
-      if xisabs(p.source) or xisabs(p.target):
+      # absolute paths are not allowed (except /dev/null)
+      if (xisabs(p.source) and p.source != b'/dev/null') or (xisabs(p.target) and p.target != b'/dev/null'):
         warning("error: absolute paths are not allowed - file no.%d" % (i+1))
         self.warnings += 1
-        if xisabs(p.source):
+        if xisabs(p.source) and p.source != b'/dev/null':
           warning("stripping absolute path from source name '%s'" % p.source)
           p.source = xstrip(p.source)
-        if xisabs(p.target):
+        if xisabs(p.target) and p.target != b'/dev/null':
           warning("stripping absolute path from target name '%s'" % p.target)
           p.target = xstrip(p.target)
     
@@ -803,6 +818,14 @@ class PatchSet(object):
 
   def findfile(self, old, new):
     """ return name of file to be patched or None """
+    # Handle None inputs
+    if old is None or new is None:
+      return None
+
+    # Handle empty inputs
+    if not old or not new:
+      return None
+
     if exists(old):
       return old
     elif exists(new):
@@ -1114,13 +1137,13 @@ class PatchSet(object):
   def dump(self):
     for p in self.items:
       for headline in p.header:
-        print(headline.rstrip('\n'))
-      print('--- ' + p.source)
-      print('+++ ' + p.target)
+        print(headline.rstrip(b'\n').decode('utf-8', errors='replace'))
+      print('--- ' + p.source.decode('utf-8', errors='replace'))
+      print('+++ ' + p.target.decode('utf-8', errors='replace'))
       for h in p.hunks:
         print('@@ -%s,%s +%s,%s @@' % (h.startsrc, h.linessrc, h.starttgt, h.linestgt))
         for line in h.text:
-          print(line.rstrip('\n'))
+          print(line.rstrip(b'\n').decode('utf-8', errors='replace'))
 
 
 def main():

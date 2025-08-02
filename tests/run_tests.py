@@ -57,9 +57,9 @@ def testfile(name):
   return join(TESTDATA, name)
 
 
-# import patch.py from parent directory
+# import patch from the new src structure
 save_path = sys.path
-sys.path.insert(0, dirname(TESTS))
+sys.path.insert(0, join(dirname(TESTS), 'src'))
 import patch
 sys.path = save_path
 
@@ -148,7 +148,7 @@ class TestPatchFiles(unittest.TestCase):
 
       # 3.
       # test utility as a whole
-      patch_tool = join(dirname(TESTS), "patch.py")
+      patch_tool = join(dirname(TESTS), "patch_new.py")
       save_cwd = getcwdu()
       os.chdir(tmpdir)
       if verbose:
