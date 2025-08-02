@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "patch"
-version = "1.16"
-description = "Patch utility to apply unified diffs"
+version = "1.0.0"
+description = "Modern python patch utility to apply unified diffs"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "anatoly techtonik", email = "techtonik@gmail.com"}
+    {name = "Max Qian", email = "astro_air@126.com"}
 ]
 maintainers = [
-    {name = "anatoly techtonik", email = "techtonik@gmail.com"}
+    {name = "Max Qian", email = "astro_air@126.com"}
 ]
 keywords = ["patch", "diff", "unified", "git", "mercurial", "svn"]
 classifiers = [
@@ -37,7 +37,7 @@ classifiers = [
     "Topic :: System :: Archiving",
     "Topic :: Utilities"
 ]
-requires-python = ">=2.7"
+requires-python = ">=3.10"
 
 [project.urls]
 Homepage = "https://github.com/techtonik/python-patch"

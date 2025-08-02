@@ -1,7 +1,7 @@
 """
 Constants for patch types and compatibility.
 
-Copyright (c) 2008-2016 anatoly techtonik
+Copyright (c) 2025 Max Qian <astro_air@126.com>
 Available under the terms of MIT license
 """
 
@@ -15,7 +15,7 @@ SVN = SUBVERSION = "svn"
 MIXED = "mixed"
 
 # Module metadata
-__author__ = "anatoly techtonik <techtonik@gmail.com>"
-__version__ = "1.16"
+__author__ = "Max Qian <astro_air@126.com>"
+__version__ = "1.0.0"
 __license__ = "MIT"
-__url__ = "https://github.com/techtonik/python-patch"
+__url__ = "https://github.com/AstroAir/python-patch"
