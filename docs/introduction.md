@@ -4,7 +4,7 @@ This directory contains the comprehensive documentation for Python Patch, built 
 
 ## 📁 Directory Structure
 
-```
+```txt
 docs/
 ├── README.md                    # This file
 ├── index.md                     # Main documentation homepage
