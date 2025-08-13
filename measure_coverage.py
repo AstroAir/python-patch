@@ -5,29 +5,36 @@ Test coverage measurement tool for python-patch.
 This script measures test coverage by analyzing which functions and classes
 are tested by our comprehensive test suite.
 """
+from patch import fromstring
+from src.patch.api import fromfile
+from src.patch.utils import xisabs, xnormpath, xstrip, pathstrip
+from src.patch.constants import GIT, SVN, HG, PLAIN
 import sys
 import os
 import ast
 import tempfile
 import shutil
 from pathlib import Path
+from typing import TypedDict
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
-
-import patch
 
 
 class CoverageAnalyzer:
     """Analyze test coverage for the patch module."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.src_dir = Path(__file__).parent / "src" / "patch"
-        self.coverage_data = {}
+        class CoverageData(TypedDict):
+            functions: list[str]
+            classes: list[str]
+            total_items: int
+        self.coverage_data: dict[str, CoverageData] = {}
         self.total_functions = 0
         self.tested_functions = 0
 
-    def analyze_module_coverage(self, module_path):
+    def analyze_module_coverage(self, module_path: Path) -> None:
         """Analyze coverage for a specific module."""
         print(f"\n📁 Analyzing {module_path.name}...")
 
@@ -61,10 +68,11 @@ class CoverageAnalyzer:
             "total_items": len(functions) + len(classes),
         }
 
-        print(f"   Found {len(functions)} functions and {len(classes)} classes")
+        print(
+            f"   Found {len(functions)} functions and {len(classes)} classes")
         self.total_functions += len(functions)
 
-    def test_function_coverage(self):
+    def test_function_coverage(self) -> set:
         """Test coverage of key functions by actually calling them."""
         print("\n🧪 Testing function coverage...")
 
@@ -76,14 +84,14 @@ class CoverageAnalyzer:
             patch_content = (
                 b"""--- a/test.txt\n+++ b/test.txt\n@@ -1,1 +1,1 @@\n-old\n+new\n"""
             )
-            patchset = patch.fromstring(patch_content)
+            patchset = fromstring(patch_content)
             if patchset:
                 tested_functions.add("fromstring")
                 tested_functions.add("PatchSet.__init__")
                 tested_functions.add("PatchSet.parse")
 
                 # Test diffstat
-                diffstat = patchset.diffstat()
+                diffstat_result = patchset.diffstat()
                 tested_functions.add("diffstat")
                 tested_functions.add("PatchSet.diffstat")
 
@@ -107,7 +115,7 @@ class CoverageAnalyzer:
                 with open(patch_file, "wb") as f:
                     f.write(patch_content)
 
-                patchset = patch.fromfile(patch_file)
+                patchset = fromfile(patch_file)
                 if patchset:
                     tested_functions.add("fromfile")
             finally:
@@ -118,44 +126,45 @@ class CoverageAnalyzer:
         # Test utility functions
         try:
             # Test path utilities
-            patch.xisabs(b"/test/path")
+            xisabs(b"/test/path")
             tested_functions.add("xisabs")
 
-            patch.xnormpath(b"test/../path")
+            xnormpath(b"test/../path")
             tested_functions.add("xnormpath")
 
-            patch.xstrip(b"/test/path")
+            xstrip(b"/test/path")
             tested_functions.add("xstrip")
 
-            patch.pathstrip(b"a/b/c/file.txt", 1)
+            pathstrip(b"a/b/c/file.txt", 1)
             tested_functions.add("pathstrip")
         except Exception as e:
             print(f"   ⚠️  Error testing utilities: {e}")
 
         # Test constants
         try:
-            assert patch.GIT == "git"
-            assert patch.SVN == "svn"
-            assert patch.HG == "mercurial"
-            assert patch.PLAIN == "plain"
+            assert GIT == "git"
+            assert SVN == "svn"
+            assert HG == "mercurial"
+            assert PLAIN == "plain"
             tested_functions.add("constants")
         except Exception as e:
             print(f"   ⚠️  Error testing constants: {e}")
 
         # Test error handling
         try:
-            result = patch.fromstring(b"invalid patch")
+            result = fromstring(b"invalid patch")
             assert result is False
             tested_functions.add("error_handling")
         except Exception as e:
             print(f"   ⚠️  Error testing error handling: {e}")
 
         self.tested_functions = len(tested_functions)
-        print(f"   ✅ Successfully tested {len(tested_functions)} functions/features")
+        print(
+            f"   ✅ Successfully tested {len(tested_functions)} functions/features")
 
         return tested_functions
 
-    def analyze_test_files(self):
+    def analyze_test_files(self) -> dict:
         """Analyze what our test files cover."""
         print("\n📋 Analyzing test file coverage...")
 
@@ -205,7 +214,7 @@ class CoverageAnalyzer:
 
         return test_coverage
 
-    def run_comprehensive_coverage_analysis(self):
+    def run_comprehensive_coverage_analysis(self) -> float:
         """Run comprehensive coverage analysis."""
         print("=" * 80)
         print("COMPREHENSIVE TEST COVERAGE ANALYSIS")
@@ -238,7 +247,7 @@ class CoverageAnalyzer:
         # Generate coverage report
         return self.generate_coverage_report(tested_functions, test_coverage)
 
-    def generate_coverage_report(self, tested_functions, test_coverage):
+    def generate_coverage_report(self, tested_functions: set, test_coverage: dict) -> float:
         """Generate comprehensive coverage report."""
         print("\n" + "=" * 80)
         print("COVERAGE REPORT")
@@ -275,8 +284,11 @@ class CoverageAnalyzer:
 
         # Estimate coverage based on test methods vs source functions
         if total_items > 0:
-            method_coverage = min(100, (total_test_methods / total_items) * 100)
+            method_coverage = min(
+                100, (total_test_methods / total_items) * 100)
             print(f"Method coverage:     {method_coverage:.1f}%")
+        else:
+            method_coverage = 0.0
 
         # Functional coverage based on actual testing
         functional_coverage = min(
@@ -319,7 +331,7 @@ class CoverageAnalyzer:
 
         for category, modules in categories.items():
             category_items = sum(
-                self.coverage_data.get(module, {}).get("total_items", 0)
+                self.coverage_data[module]["total_items"] if module in self.coverage_data else 0
                 for module in modules
             )
             if category_items > 0:
@@ -327,10 +339,10 @@ class CoverageAnalyzer:
             else:
                 print(f"{category:15} {category_items:3d} items - ⚠️  Check needed")
 
-        return overall_coverage
+        return float(overall_coverage)
 
 
-def main():
+def main() -> bool:
     """Main function."""
     analyzer = CoverageAnalyzer()
     coverage = analyzer.run_comprehensive_coverage_analysis()

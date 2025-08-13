@@ -264,34 +264,40 @@ def normalize_filenames(patchset: "PatchSet") -> None:
         # references to parent are not allowed
         if p.source is not None and p.source.startswith(b".." + sep):
             warning(
-                "error: stripping parent path for source file patch no.%d" % (i + 1)
+                "error: stripping parent path for source file patch no.%d" % (
+                    i + 1)
             )
             patchset.warnings += 1
             while p.source.startswith(b".." + sep):
                 p.source = p.source.partition(sep)[2]
         if p.target is not None and p.target.startswith(b".." + sep):
             warning(
-                "error: stripping parent path for target file patch no.%d" % (i + 1)
+                "error: stripping parent path for target file patch no.%d" % (
+                    i + 1)
             )
             patchset.warnings += 1
             while p.target.startswith(b".." + sep):
                 p.target = p.target.partition(sep)[2]
         # absolute paths are not allowed (except /dev/null)
         source_is_abs = (
-            p.source is not None and xisabs(p.source) and p.source != b"/dev/null"
+            p.source is not None and xisabs(
+                p.source) and p.source != b"/dev/null"
         )
         target_is_abs = (
-            p.target is not None and xisabs(p.target) and p.target != b"/dev/null"
+            p.target is not None and xisabs(
+                p.target) and p.target != b"/dev/null"
         )
 
         if source_is_abs or target_is_abs:
             warning("error: absolute paths are not allowed - file no.%d" % (i + 1))
             patchset.warnings += 1
             if source_is_abs and p.source is not None:
-                warning("stripping absolute path from source name %r" % p.source)
+                warning("stripping absolute path from source name %r" %
+                        p.source)
                 p.source = xstrip(p.source)
             if target_is_abs and p.target is not None:
-                warning("stripping absolute path from target name %r" % p.target)
+                warning("stripping absolute path from target name %r" %
+                        p.target)
                 p.target = xstrip(p.target)
 
         patchset.items[i].source = p.source

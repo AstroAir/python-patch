@@ -390,7 +390,8 @@ class PatchSet(object):
                                     )
                                 self.warnings += 1
                             if debugmode:
-                                debuglines: Dict[str, Union[str, int]] = dict(ends)
+                                debuglines: Dict[str,
+                                                 Union[str, int]] = dict(ends)
                                 file_target = (
                                     tostr(p.target)
                                     if p.target is not None
@@ -416,7 +417,8 @@ class PatchSet(object):
                     filenames = True
                     if debugmode and len(self.items) > 0 and p is not None:
                         if p.source is not None:
-                            debug("- %2d hunks for %r" % (len(p.hunks), p.source))
+                            debug("- %2d hunks for %r" %
+                                  (len(p.hunks), p.source))
 
             if filenames:
                 if line.startswith(b"--- "):
@@ -433,7 +435,8 @@ class PatchSet(object):
                     if match:
                         srcname = match.group(1).strip()
                     else:
-                        warning("skipping invalid filename at line %d" % (lineno + 1))
+                        warning("skipping invalid filename at line %d" %
+                                (lineno + 1))
                         self.errors += 1
                         # XXX p.header += line
                         # switch back to headscan state
@@ -500,7 +503,8 @@ class PatchSet(object):
                             continue
 
             if hunkhead:
-                match = re.match(rb"^@@ -(\d+)(,(\d+))? \+(\d+)(,(\d+))? @@(.*)", line)
+                match = re.match(
+                    rb"^@@ -(\d+)(,(\d+))? \+(\d+)(,(\d+))? @@(.*)", line)
                 if not match:
                     if p is not None and not p.hunks:
                         if p.source is not None:
@@ -786,8 +790,10 @@ class PatchSet(object):
                     debug("   %r" % p.source)
                 if p.target is not None:
                     debug("   %r" % p.target)
-                old = pathstrip(p.source, strip) if p.source is not None else None
-                new = pathstrip(p.target, strip) if p.target is not None else None
+                old = pathstrip(
+                    p.source, strip) if p.source is not None else None
+                new = pathstrip(
+                    p.target, strip) if p.target is not None else None
             else:
                 old, new = p.source, p.target
 
@@ -899,7 +905,8 @@ class PatchSet(object):
             if canpatch:
                 backupname = filename + b".orig"
                 if exists(backupname.decode("utf-8", errors="replace")):
-                    warning("can't backup original file to %r - aborting" % backupname)
+                    warning("can't backup original file to %r - aborting" %
+                            backupname)
                 else:
                     shutil.move(
                         filename.decode("utf-8", errors="replace"),
@@ -916,10 +923,12 @@ class PatchSet(object):
                         warning("error patching file %r" % filename)
                         shutil.copy(
                             filename.decode("utf-8", errors="replace"),
-                            filename.decode("utf-8", errors="replace") + ".invalid",
+                            filename.decode(
+                                "utf-8", errors="replace") + ".invalid",
                         )
                         warning(
-                            "invalid version is saved to %r" % (filename + b".invalid")
+                            "invalid version is saved to %r" % (
+                                filename + b".invalid")
                         )
                         # todo: proper rejects
                         shutil.move(

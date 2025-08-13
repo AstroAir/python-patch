@@ -40,9 +40,11 @@ classifiers = [
 requires-python = ">=3.10"
 
 [project.urls]
-Homepage = "https://github.com/techtonik/python-patch"
-Repository = "https://github.com/techtonik/python-patch"
-Issues = "https://github.com/techtonik/python-patch/issues"
+Homepage = "https://github.com/AstroAir/python-patch"
+Repository = "https://github.com/AstroAir/python-patch"
+Issues = "https://github.com/AstroAir/python-patch/issues"
+Documentation = "https://astroair.github.io/python-patch/"
+Changelog = "https://github.com/AstroAir/python-patch/blob/main/CHANGELOG.md"
 
 [project.scripts]
 patch = "patch.cli:main"
@@ -64,6 +66,17 @@ dev = [
     "black",
     "flake8",
     "mypy"
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.0.0",
+    "mkdocstrings[python]>=0.20.0",
+    "mkdocs-git-revision-date-localized-plugin>=1.2.0",
+    "mkdocs-git-committers-plugin-2>=1.2.0",
+    "mkdocs-minify-plugin>=0.7.0"
+]
+all = [
+    "patch[dev,docs]"
 ]
 
 # Modern Python packaging configuration

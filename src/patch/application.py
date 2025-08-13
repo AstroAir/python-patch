@@ -261,7 +261,8 @@ def match_file_hunks(filepath: Union[str, bytes], hunks: List["Hunk"]) -> bool:
                 while lineno < h.starttgt:
                     if not len(line):  # eof
                         debug(
-                            "check failed - premature eof before hunk: %d" % (hno + 1)
+                            "check failed - premature eof before hunk: %d" % (
+                                hno + 1)
                         )
                         raise NoMatch
                     line = fp.readline()
@@ -448,7 +449,8 @@ def dump_patchset(patchset: "PatchSet") -> None:
             print("+++ /dev/null")
         for h in p.hunks:
             print(
-                "@@ -%s,%s +%s,%s @@" % (h.startsrc, h.linessrc, h.starttgt, h.linestgt)
+                "@@ -%s,%s +%s,%s @@" % (h.startsrc,
+                                         h.linessrc, h.starttgt, h.linestgt)
             )
             for line in h.text:
                 print(line.rstrip(b"\n").decode("utf-8", errors="replace"))

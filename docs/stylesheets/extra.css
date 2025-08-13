@@ -1,0 +1,100 @@
+/* Custom styles for Python Patch documentation */
+
+/* Code block enhancements */
+.highlight .hll {
+    background-color: #ffffcc;
+}
+
+/* Custom admonition styles */
+.md-typeset .admonition.note {
+    border-left: 4px solid #2196f3;
+}
+
+.md-typeset .admonition.tip {
+    border-left: 4px solid #4caf50;
+}
+
+.md-typeset .admonition.warning {
+    border-left: 4px solid #ff9800;
+}
+
+.md-typeset .admonition.danger {
+    border-left: 4px solid #f44336;
+}
+
+/* API documentation styling */
+.doc-heading {
+    border-bottom: 1px solid var(--md-default-fg-color--lighter);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Code copy button styling */
+.md-clipboard {
+    color: var(--md-default-fg-color--light);
+}
+
+.md-clipboard:hover {
+    color: var(--md-accent-fg-color);
+}
+
+/* Navigation enhancements */
+.md-nav__item--active>.md-nav__link {
+    font-weight: 600;
+}
+
+/* Table styling */
+.md-typeset table:not([class]) {
+    border: 1px solid var(--md-default-fg-color--lighter);
+    border-radius: 0.2rem;
+}
+
+.md-typeset table:not([class]) th {
+    background-color: var(--md-default-fg-color--lightest);
+    font-weight: 600;
+}
+
+/* Badge styling for version info */
+.version-badge {
+    display: inline-block;
+    padding: 0.2em 0.6em;
+    font-size: 0.75em;
+    font-weight: 600;
+    line-height: 1;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.25rem;
+    background-color: #6c757d;
+}
+
+.version-badge.new {
+    background-color: #28a745;
+}
+
+.version-badge.deprecated {
+    background-color: #dc3545;
+}
+
+/* Responsive improvements */
+@media screen and (max-width: 76.1875em) {
+    .md-nav--primary .md-nav__title {
+        background-color: var(--md-primary-fg-color);
+    }
+}
+
+/* Print styles */
+@media print {
+
+    .md-header,
+    .md-footer,
+    .md-nav,
+    .md-sidebar {
+        display: none !important;
+    }
+
+    .md-content {
+        margin: 0 !important;
+    }
+}

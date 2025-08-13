@@ -24,6 +24,7 @@ If your question relates to specific code, please provide a minimal example:
 ```
 
 **Environment (if relevant)**
+
 - OS: [e.g. Ubuntu 20.04, Windows 10, macOS 12.0]
 - Python version: [e.g. 3.9.7]
 - python-patch version: [e.g. 1.16]

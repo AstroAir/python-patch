@@ -86,7 +86,8 @@ def main() -> None:
         const=2,
         help="be verbose",
     )
-    opt.add_option("--debug", action="store_true", dest="debugmode", help="debug mode")
+    opt.add_option("--debug", action="store_true",
+                   dest="debugmode", help="debug mode")
     opt.add_option(
         "--diffstat",
         action="store_true",
